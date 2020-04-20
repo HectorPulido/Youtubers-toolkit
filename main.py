@@ -6,6 +6,16 @@ import matplotlib.pyplot as plt
 from moviepy.editor import VideoFileClip
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
+
+#get the sound array of an specific segment of the clip
+def get_cut(second, interval):
+    return INPUT_FILE.subclip(second, second+interval).audio.to_soundarray(fps=22000)
+
+#get the volume of an specific clip
+def get_volume(subclip):
+    return np.sqrt(((1.0*subclip)**2).mean())
+
+#
 def str2bool(v):
     if isinstance(v, bool):
        return v
@@ -17,7 +27,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 parser = argparse.ArgumentParser(description='Trim the video by silences')
-parser.add_argument('input_file', type=str,  help='The video file you want modified')
+parser.add_argument('input_file', type=str, nargs='+',  help='The video file you want modified')
 parser.add_argument('--clip_interval', type=float,  help='The precision of the trimming')
 parser.add_argument('--sound_threshold', type=float,  help='Maximun amout of volume to be considerer as silence')
 parser.add_argument('-j', '--join', const=True, default=False, type=str2bool, nargs='?',  help='Join all the clips together')
@@ -26,7 +36,8 @@ parser.add_argument('-d', '--discard_silence', const=True, default=False, type=s
 
 args = parser.parse_args()
 
-input_file = args.input_file
+input_files = args.input_file
+
 clip_interval = args.clip_interval
 sound_threshold = args.sound_threshold
 join = args.join
@@ -58,60 +69,56 @@ if discard_silence != None:
 else:
     DISCARD_SILENCE = False
 
-#get the name of the file
-FILENAME = input_file.split("/")[-1].split(".")[0]
+for file_id, input_file in enumerate(input_files):
+    #get the name of the file
+    FILENAME = input_file.split("/")[-1].split(".")[0]
 
-#Get the original video
-INPUT_FILE = VideoFileClip(input_file)
+    #Get the original video
+    INPUT_FILE = VideoFileClip(input_file)
 
-#get the sound array of an specific segment of the clip
-def get_cut(second, interval):
-    return INPUT_FILE.subclip(second, second+interval).audio.to_soundarray(fps=22000)
+    volumes = []
 
-#get the volume of an specific clip
-def get_volume(subclip):
-    return np.sqrt(((1.0*subclip)**2).mean())
+    #Get every silence
+    for i in np.arange(0, INPUT_FILE.duration, CLIP_INTERVAL):
+        if(INPUT_FILE.duration > i + CLIP_INTERVAL):
+            volumes.append(get_volume(get_cut(i, CLIP_INTERVAL)))
 
-volumes = []
+    #Get changes of silence
+    volumes = np.array(volumes)
+    volumes_binary = volumes > SOUND_THRESHOLD
 
-#Get every silence
-for i in np.arange(0, INPUT_FILE.duration, CLIP_INTERVAL):
-    if(INPUT_FILE.duration > i + CLIP_INTERVAL):
-        volumes.append(get_volume(get_cut(i, CLIP_INTERVAL)))
+    change_times = [0]
+    for i in range(1, len(volumes_binary)):
+        if(volumes_binary[i] != volumes_binary[i-1]):
+            change_times.append(i * CLIP_INTERVAL)
+    change_times.append(INPUT_FILE.duration)
 
-#Get changes of silence
-volumes = np.array(volumes)
-volumes_binary = volumes > SOUND_THRESHOLD
+    #Split principal clip
+    first_piece_silence = 1 if volumes_binary[0] else 0 
+    clips = []
+    for i in range(1, len(change_times)):
+        if DISCARD_SILENCE and i % 2 != first_piece_silence:
+            continue
+        new = INPUT_FILE.subclip(change_times[i-1], change_times[i])
+        clips.append(new)
+        
 
-change_times = [0]
-for i in range(1, len(volumes_binary)):
-    if(volumes_binary[i] != volumes_binary[i-1]):
-        change_times.append(i * CLIP_INTERVAL)
-change_times.append(INPUT_FILE.duration)
+    if JOIN:
+        concat_clip = editor.concatenate_videoclips(clips)
+        concat_clip.write_videofile(f"{file_id}_{FILENAME}_EDITED.mp4")
+    else:
+        for i, clip in enumerate(clips):
+            clip.write_videofile(f"{file_id}_{FILENAME}_cut_{i}.mp4", audio_codec='aac')
 
-#Split principal clip
-first_piece_silence = 1 if volumes_binary[0] else 0 
-clips = []
-for i in range(1, len(change_times)):
-    if DISCARD_SILENCE and i % 2 != first_piece_silence:
-        continue
-    new = INPUT_FILE.subclip(change_times[i-1], change_times[i])
-    clips.append(new)
-    
-
-if JOIN:
-    concat_clip = editor.concatenate_videoclips(clips)
-    concat_clip.write_videofile(f"{FILENAME}_EDITED.mp4")
-else:
-    for i, clip in enumerate(clips):
-        clip.write_videofile(f"{FILENAME}_cut_{i}.mp4", audio_codec='aac')
+    if STATISTICS:
+        #VOLUME GRAPH
+        plt.figure(file_id)
+        plt.xlabel('Time')
+        plt.ylabel('Volumen')
+        x = np.linspace(0,clip.duration,len(volumes))
+        sound_threshold_y = [SOUND_THRESHOLD for i in range(len(x))]
+        plt.plot(x, volumes, color='b')
+        plt.plot(x, sound_threshold_y, color='r')
 
 if STATISTICS:
-    #VOLUME GRAPH
-    plt.xlabel('Time')
-    plt.ylabel('Volumen')
-    x = np.linspace(0,clip.duration,len(volumes))
-    sound_threshold_y = [SOUND_THRESHOLD for i in range(len(x))]
-    plt.plot(x, volumes, color='b')
-    plt.plot(x, sound_threshold_y, color='r')
     plt.show()
