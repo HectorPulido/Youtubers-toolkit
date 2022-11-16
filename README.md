@@ -29,12 +29,6 @@ python main.py vid_1.mp4 vid_2.mp4 -d -j
 
 <br>
 
-<p align="center">
-<a href="#user-30538313-pinned-items-reorder-form">
-<img align="center" src="https://github-readme-stats.vercel.app/api?username=HectorPulido&bg_color=30,e96443,904e95&title_color=fff&text_color=fff" alt="Hector's Github Stats"/>
-</a>
-</p>
-
 <div align="center">
 <h3 align="center">Let's connect 😋</h3>
 </div>
