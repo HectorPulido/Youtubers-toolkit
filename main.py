@@ -1,32 +1,6 @@
-import time
 import argparse
-import numpy as np
-import moviepy.editor as editor
-import matplotlib.pyplot as plt
-from moviepy.editor import VideoFileClip
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-
-
-# get the sound array of an specific segment of the clip
-def get_cut(second, interval):
-    return INPUT_FILE.subclip(second, second + interval).audio.to_soundarray(fps=22000)
-
-
-# get the volume of an specific clip
-def get_volume(subclip):
-    return np.sqrt(((1.0 * subclip) ** 2).mean())
-
-
-#
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
+from toolkit import VideoProcessor
+from utils import str2bool
 
 
 parser = argparse.ArgumentParser(description="Trim the video by silences")
@@ -49,6 +23,15 @@ parser.add_argument(
     help="Join all the clips together",
 )
 parser.add_argument(
+    "-t",
+    "--transcript",
+    const=True,
+    default=False,
+    type=str2bool,
+    nargs="?",
+    help="Transcript the video",
+)
+parser.add_argument(
     "-s",
     "--statistics",
     const=True,
@@ -66,91 +49,55 @@ parser.add_argument(
     nargs="?",
     help="Discard silence clips",
 )
+parser.add_argument(
+    "-n",
+    "--denoise",
+    const=True,
+    default=False,
+    type=str2bool,
+    nargs="?",
+    help="Remove background noise from the video",
+)
 
 args = parser.parse_args()
 
-input_files = args.input_file
+if __name__ == "__main__":
+    param_dict_base = {
+        "input_file": {"value": args.input_file, "default": None},
+        "clip_interval": {"value": args.clip_interval, "default": 2},
+        "sound_threshold": {"value": args.sound_threshold, "default": 0.01},
+        "join": {"value": args.join, "default": False},
+        "transcript": {"value": args.transcript, "default": False},
+        "statistics": {"value": args.statistics, "default": False},
+        "discard_silence": {"value": args.discard_silence, "default": False},
+        "denoise": {"value": args.denoise, "default": False},
+    }
 
-clip_interval = args.clip_interval
-sound_threshold = args.sound_threshold
-join = args.join
-statistics = args.statistics
-discard_silence = args.discard_silence
+    param_dict = {}
 
-if clip_interval != None:
-    CLIP_INTERVAL = clip_interval
-else:
-    CLIP_INTERVAL = 2
+    for key, value in param_dict_base.items():
+        if value["value"] is not None:
+            param_dict[key] = value["value"]
+        else:
+            param_dict[key] = value["default"]
 
-if sound_threshold != None:
-    SOUND_THRESHOLD = sound_threshold
-else:
-    SOUND_THRESHOLD = 0.01
+    input_files = param_dict["input_file"]
 
-if join != None:
-    JOIN = join
-else:
-    JOIN = False
+    video_processor = VideoProcessor(param_dict)
 
-if statistics != None:
-    STATISTICS = statistics
-else:
-    STATISTICS = False
+    for input_file in input_files:
+        video_processor.process_video(input_file)
 
-if discard_silence != None:
-    DISCARD_SILENCE = discard_silence
-else:
-    DISCARD_SILENCE = False
+# TODO
+#     if STATISTICS:
+#         # VOLUME GRAPH
+#         plt.figure(file_id)
+#         plt.xlabel("Time")
+#         plt.ylabel("Volumen")
+#         x = np.linspace(0, clip.duration, len(volumes))
+#         sound_threshold_y = [SOUND_THRESHOLD for i in range(len(x))]
+#         plt.plot(x, volumes, color="b")
+#         plt.plot(x, sound_threshold_y, color="r")
 
-for file_id, input_file in enumerate(input_files):
-    # get the name of the file
-    FILENAME = input_file.split("/")[-1].split(".")[0]
-
-    # Get the original video
-    INPUT_FILE = VideoFileClip(input_file)
-
-    volumes = []
-
-    # Get every silence
-    for i in np.arange(0, INPUT_FILE.duration, CLIP_INTERVAL):
-        if INPUT_FILE.duration > i + CLIP_INTERVAL:
-            volumes.append(get_volume(get_cut(i, CLIP_INTERVAL)))
-
-    # Get changes of silence
-    volumes = np.array(volumes)
-    volumes_binary = volumes > SOUND_THRESHOLD
-
-    change_times = [0]
-    for i in range(1, len(volumes_binary)):
-        if volumes_binary[i] != volumes_binary[i - 1]:
-            change_times.append(i * CLIP_INTERVAL)
-    change_times.append(INPUT_FILE.duration)
-
-    # Split principal clip
-    first_piece_silence = 1 if volumes_binary[0] else 0
-    clips = []
-    for i in range(1, len(change_times)):
-        if DISCARD_SILENCE and i % 2 != first_piece_silence:
-            continue
-        new = INPUT_FILE.subclip(change_times[i - 1], change_times[i])
-        clips.append(new)
-
-    if JOIN:
-        concat_clip = editor.concatenate_videoclips(clips)
-        concat_clip.write_videofile(f"{file_id}_{FILENAME}_EDITED.mp4")
-    else:
-        for i, clip in enumerate(clips):
-            clip.write_videofile(f"{file_id}_{FILENAME}_cut_{i}.mp4", audio_codec="aac")
-
-    if STATISTICS:
-        # VOLUME GRAPH
-        plt.figure(file_id)
-        plt.xlabel("Time")
-        plt.ylabel("Volumen")
-        x = np.linspace(0, clip.duration, len(volumes))
-        sound_threshold_y = [SOUND_THRESHOLD for i in range(len(x))]
-        plt.plot(x, volumes, color="b")
-        plt.plot(x, sound_threshold_y, color="r")
-
-if STATISTICS:
-    plt.show()
+# if STATISTICS:
+#     plt.show()
