@@ -1,6 +1,8 @@
 # Youtubers toolkit
 
 This Tool allows you to cut a video easily by silences with an intuitive command line interface.
+It uses the newest technologies in the field of machine learning to detect silences in a video and cut it in the most efficient way.
+Also generate a transcript of the video and a subtitle file.
 
 ## How to use 
 First you must to install all the dependences with the command 
@@ -11,20 +13,43 @@ Then you can use the software using the command from the command line
 
 ## Arguments
 positional arguments: <br>
-&nbsp;&nbsp;&nbsp;&nbsp;input_file&nbsp;&nbsp;&nbsp;The video file you want modified <b> can be more than one </b><br><br>
+&nbsp;input_file&nbsp;The video file you want modified <b> can be more than one </b><br><br>
 
 ## Optional arguments 
-&nbsp;&nbsp;&nbsp;&nbsp;-h,&nbsp;--help            show this help message and exit<br>
-&nbsp;&nbsp;&nbsp;&nbsp;--clip_interval CLIP_INTERVAL The precision of the trimming<br>
-&nbsp;&nbsp;&nbsp;&nbsp;--sound_threshold SOUND_THRESHOLD Maximun amout of volume to be considerer as silence <br>
-&nbsp;&nbsp;&nbsp;&nbsp;-j [JOIN], --join [JOIN] Join all the clips together <br>
-&nbsp;&nbsp;&nbsp;&nbsp;-s [STATISTICS], --statistics [STATISTICS] Show statistics of the volumen <br>
-&nbsp;&nbsp;&nbsp;&nbsp;-d [DISCARD_SILENCE], --discard_silence [DISCARD_SILENCE] Discard silence clips <br>
+positional arguments:<br>
+&nbsp;input_file&nbsp;&nbsp;The video file you want modified<br>
+
+options:<br>
+&nbsp;-h, --help&nbsp;&nbsp;show this help message and exit<br>
+&nbsp;--clip_interval CLIP_INTERVAL<br>
+&nbsp;&nbsp;&nbsp;The precision of the trimming<br>
+&nbsp;--sound_threshold SOUND_THRESHOLD<br>
+&nbsp;&nbsp;&nbsp;Maximun amout of volume to be considerer as silence<br>
+&nbsp;-j [JOIN], --join [JOIN]<br>
+&nbsp;&nbsp;&nbsp;Join all the clips together<br>
+&nbsp;-t [TRANSCRIPT], --transcript [TRANSCRIPT]<br>
+&nbsp;&nbsp;&nbsp;Transcript the video<br>
+&nbsp;-s [STATISTICS], --statistics [STATISTICS]<br>
+&nbsp;&nbsp;&nbsp;Show statistics<br>
+&nbsp;-d [DISCARD_SILENCE], --discard_silence [DISCARD_SILENCE]<br>
+&nbsp;&nbsp;&nbsp;Discard silence clips<br>
+&nbsp;-n [DENOISE], --denoise [DENOISE]<br>
+&nbsp;&nbsp;&nbsp;Remove background noise from the video<br>
 
 ## Example
 This will result in a merge of every non-silence part 
 ~~~
 python main.py vid_1.mp4 vid_2.mp4 -d -j
+~~~
+
+This will result in a merge of every non-silence part and generate a transcript of the video
+~~~
+python main.py vid_1.mp4 vid_2.mp4 -d -j -t
+~~~
+
+This will result will separate every non-silence part and will remove the background noise
+~~~
+python main.py vid_1.mp4 vid_2.mp4 -d -n
 ~~~
 
 <br>
