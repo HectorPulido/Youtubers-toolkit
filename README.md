@@ -1,7 +1,6 @@
 # Youtubers toolkit
 
-This Tool allows you to cut a video easily by silences with an intuitive command line interface.
-It uses the newest technologies in the field of machine learning to detect silences in a video and cut it in the most efficient way.
+This is a toolkit for easy video editing for youtubers, it uses the newest technologies in the field of machine learning to detect silences in a video and cut it in the most efficient way.
 Also generate a transcript of the video and a subtitle file.
 
 ## How to use 
@@ -12,46 +11,36 @@ pip install -r requirements.txt
 Then you can use the software using the command from the command line
 
 ## Arguments
-positional arguments: <br>
-&nbsp;input_file&nbsp;The video file you want modified <b> can be more than one </b><br><br>
-
-## Optional arguments 
 positional arguments:<br>
-&nbsp;input_file&nbsp;&nbsp;The video file you want modified<br>
+&nbsp;input_file&nbsp;&nbsp;&nbsp;The video file you want modified<br>
 
 options:<br>
-&nbsp;-h, --help&nbsp;&nbsp;show this help message and exit<br>
-&nbsp;--clip_interval CLIP_INTERVAL<br>
-&nbsp;&nbsp;&nbsp;The precision of the trimming<br>
-&nbsp;--sound_threshold SOUND_THRESHOLD<br>
-&nbsp;&nbsp;&nbsp;Maximun amout of volume to be considerer as silence<br>
-&nbsp;-j [JOIN], --join [JOIN]<br>
-&nbsp;&nbsp;&nbsp;Join all the clips together<br>
-&nbsp;-t [TRANSCRIPT], --transcript [TRANSCRIPT]<br>
-&nbsp;&nbsp;&nbsp;Transcript the video<br>
-&nbsp;-s [STATISTICS], --statistics [STATISTICS]<br>
-&nbsp;&nbsp;&nbsp;Show statistics<br>
+&nbsp;-h, --help&nbsp;&nbsp;&nbsp;show this help message and exit<br>
+&nbsp;--pipeline PIPELINE [PIPELINE ...]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Functions to be applied to the video, trim_by_silence, denoise, transcript,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;subtitles, save_separated_video, save_join, save_video<br>
+&nbsp;-c CLIP_INTERVAL, --clip_interval CLIP_INTERVAL<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The precision of the trimming<br>
+&nbsp;-s SOUND_THRESHOLD, --sound_threshold SOUND_THRESHOLD<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximun amout of volume to be considerer as silence<br>
 &nbsp;-d [DISCARD_SILENCE], --discard_silence [DISCARD_SILENCE]<br>
-&nbsp;&nbsp;&nbsp;Discard silence clips<br>
-&nbsp;-n [DENOISE], --denoise [DENOISE]<br>
-&nbsp;&nbsp;&nbsp;Remove background noise from the video<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Discard silence clips<br>
 
 ## Example
 This will result in a merge of every non-silence part 
 ~~~
-python main.py vid_1.mp4 vid_2.mp4 -d -j
+python main.py vid_1.mp4 --pipeline denoise transcript subtitles trim_by_silence save_separated_video -c 1
 ~~~
 
-This will result in a merge of every non-silence part and generate a transcript of the video
+This will generate a transcript of the video with the denoiser filter
 ~~~
-python main.py vid_1.mp4 vid_2.mp4 -d -j -t
-~~~
-
-This will result will separate every non-silence part and will remove the background noise
-~~~
-python main.py vid_1.mp4 vid_2.mp4 -d -n
+python main.py vid_1.mp4 vid_2.mp4 --pipeline denoise transcript
 ~~~
 
+This will add subtitles to the video and cut the video by silences, all of this with the denoiser filter
+~~~
+python main.py vid_1.mp4 --pipeline denoise subtitles trim_by_silence save_separated_video -c 1&nbsp;
+~~~
 <br>
 
 <div align="center">

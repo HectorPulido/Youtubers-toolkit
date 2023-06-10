@@ -1,44 +1,42 @@
 import argparse
-from toolkit import VideoProcessor
 from utils import str2bool
+from toolkit import VideoProcessor
 
 
-parser = argparse.ArgumentParser(description="Trim the video by silences")
+functions_dict = {
+    "trim_by_silence": VideoProcessor.trim_by_silence,
+    "denoise": VideoProcessor.denoise_video,
+    "transcript": VideoProcessor.generate_transcript,
+    "subtitles": VideoProcessor.add_subtitles,
+    "save_separated_video": VideoProcessor.save_separated_video,
+    "save_join": VideoProcessor.save_joined_video,
+    "save_video": VideoProcessor.save_video,
+    "set_vertical": VideoProcessor.set_vertical,
+    "set_horizontal": VideoProcessor.set_horizontal,
+}
+
+
+parser = argparse.ArgumentParser(description="Multiples tools for video editing")
 parser.add_argument(
     "input_file", type=str, nargs="+", help="The video file you want modified"
 )
-parser.add_argument("--clip_interval", type=float, help="The precision of the trimming")
+
 parser.add_argument(
-    "--sound_threshold",
-    type=float,
-    help="Maximun amout of volume to be considerer as silence",
+    "--pipeline",
+    type=str,
+    nargs="+",
+    help=f"Functions to be applied to the video, {', '.join(functions_dict.keys())}",
 )
+
 parser.add_argument(
-    "-j",
-    "--join",
-    const=True,
-    default=False,
-    type=str2bool,
-    nargs="?",
-    help="Join all the clips together",
-)
-parser.add_argument(
-    "-t",
-    "--transcript",
-    const=True,
-    default=False,
-    type=str2bool,
-    nargs="?",
-    help="Transcript the video",
+    "-c", "--clip_interval", type=float, default=2, help="The precision of the trimming"
 )
 parser.add_argument(
     "-s",
-    "--statistics",
-    const=True,
-    default=False,
-    type=str2bool,
-    nargs="?",
-    help="Show statistics",
+    "--sound_threshold",
+    type=float,
+    default=0.01,
+    help="Maximun amout of volume to be considerer as silence",
 )
 parser.add_argument(
     "-d",
@@ -49,55 +47,33 @@ parser.add_argument(
     nargs="?",
     help="Discard silence clips",
 )
-parser.add_argument(
-    "-n",
-    "--denoise",
-    const=True,
-    default=False,
-    type=str2bool,
-    nargs="?",
-    help="Remove background noise from the video",
-)
+
 
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    param_dict_base = {
-        "input_file": {"value": args.input_file, "default": None},
-        "clip_interval": {"value": args.clip_interval, "default": 2},
-        "sound_threshold": {"value": args.sound_threshold, "default": 0.01},
-        "join": {"value": args.join, "default": False},
-        "transcript": {"value": args.transcript, "default": False},
-        "statistics": {"value": args.statistics, "default": False},
-        "discard_silence": {"value": args.discard_silence, "default": False},
-        "denoise": {"value": args.denoise, "default": False},
-    }
+    input_files = args.input_file
+    pipeline = args.pipeline
+    clip_interval = args.clip_interval
+    sound_threshold = args.sound_threshold
+    discard_silence = args.discard_silence
 
-    param_dict = {}
-
-    for key, value in param_dict_base.items():
-        if value["value"] is not None:
-            param_dict[key] = value["value"]
-        else:
-            param_dict[key] = value["default"]
-
-    input_files = param_dict["input_file"]
-
-    video_processor = VideoProcessor(param_dict)
-
+    video_processor = VideoProcessor()
     for input_file in input_files:
-        video_processor.process_video(input_file)
+        kwargs = {
+            "video_path": input_file,
+            "clip_interval": clip_interval,
+            "sound_threshold": sound_threshold,
+            "discard_silence": discard_silence,
+        }
 
-# TODO
-#     if STATISTICS:
-#         # VOLUME GRAPH
-#         plt.figure(file_id)
-#         plt.xlabel("Time")
-#         plt.ylabel("Volumen")
-#         x = np.linspace(0, clip.duration, len(volumes))
-#         sound_threshold_y = [SOUND_THRESHOLD for i in range(len(x))]
-#         plt.plot(x, volumes, color="b")
-#         plt.plot(x, sound_threshold_y, color="r")
+        kwargs = video_processor.get_video_data(**kwargs)
 
-# if STATISTICS:
-#     plt.show()
+        for step_in_pipeline in pipeline:
+            if step_in_pipeline not in functions_dict:
+                raise ValueError(
+                    f"Function {step_in_pipeline} not found. Available functions: {', '.join(functions_dict.keys())}"
+                )
+
+            print(f"Applying {step_in_pipeline} to {input_file}")
+            kwargs = functions_dict[step_in_pipeline](**kwargs)
