@@ -27,6 +27,23 @@ options:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Discard silence clips<br>
 
 ## Example
+
+This will generate a transcript of the video
+~~~
+python main.py vid_1.mp4 vid_2.mp4 --pipeline transcript
+~~~
+
+This code splits an SRT subtitle file into shorter segments, with a predefined number of words per segment, adjusting start and end times evenly. It then generates a new file with the split subtitles.
+~~~
+python split_srt.py test.srt 5
+~~~
+
+This will result in a merge the video with the subtitles
+~~~
+python main.py vid_1.mp4 --pipeline subtitles save_join
+~~~
+
+
 This will result in a merge of every non-silence part 
 ~~~
 python main.py vid_1.mp4 --pipeline denoise transcript subtitles trim_by_silence save_separated_video -c 1
@@ -42,10 +59,7 @@ This will add subtitles to the video and cut the video by silences, all of this 
 python main.py vid_1.mp4 --pipeline denoise subtitles trim_by_silence save_separated_video -c 1&nbsp;
 ~~~
 
-This code splits an SRT subtitle file into shorter segments, with a predefined number of words per segment, adjusting start and end times evenly. It then generates a new file with the split subtitles.
-~~~
-python split_srt.py test.srt 5
-~~~
+
 <br>
 
 <div align="center">

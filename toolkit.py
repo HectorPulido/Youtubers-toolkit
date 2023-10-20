@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from moviepy import editor
 from moviepy.editor import VideoFileClip
@@ -22,8 +23,6 @@ class VideoProcessor:
     @staticmethod
     def _get_audio(input_video_file_clip, filename):
         audio_file_name = f"{filename}_audio.wav"
-
-        import os
 
         if os.path.exists(audio_file_name):
             os.remove(audio_file_name)
@@ -141,22 +140,25 @@ class VideoProcessor:
         filename = kwargs["filename"]
         input_video_file_clip = kwargs["input_video_file_clip"]
         subtitles_filename = kwargs.get(
-            "transcript_file_name", f"{filename}_transcript.srt"
+            "transcript_file_name", f"{filename}_transcript_splitted.srt"
         )
+
+        if not os.path.exists(subtitles_filename):
+            subtitles_filename = f"{filename}_transcript.srt"
 
         def generator(txt):
             return editor.TextClip(
                 txt,
-                font="Arial",
-                fontsize=28,
+                font="Hey-Comic",
+                fontsize=60,
                 color="white",
-                method="caption",
+                method="label",
                 align="south",
                 bg_color="black",
             )
 
         subtitles = SubtitlesClip(subtitles_filename, generator)
-        video_list = [input_video_file_clip, subtitles.set_pos(("center", "bottom"))]
+        video_list = [input_video_file_clip, subtitles.set_pos(("center", input_video_file_clip.h - 300))]
         video_with_subs = editor.CompositeVideoClip(video_list)
 
         kwargs["input_video_file_clip"] = video_with_subs
