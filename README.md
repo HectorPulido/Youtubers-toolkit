@@ -41,6 +41,11 @@ This will add subtitles to the video and cut the video by silences, all of this 
 ~~~
 python main.py vid_1.mp4 --pipeline denoise subtitles trim_by_silence save_separated_video -c 1&nbsp;
 ~~~
+
+This code splits an SRT subtitle file into shorter segments, with a predefined number of words per segment, adjusting start and end times evenly. It then generates a new file with the split subtitles.
+~~~
+python split_srt.py test.srt 5
+~~~
 <br>
 
 <div align="center">

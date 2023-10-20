@@ -1,5 +1,5 @@
 import numpy as np
-import moviepy.editor as editor
+from moviepy import editor
 from moviepy.editor import VideoFileClip
 from moviepy.video.tools.subtitles import SubtitlesClip
 
@@ -88,7 +88,7 @@ class VideoProcessor:
 
         audio_file_name = VideoProcessor._get_audio(input_video_file_clip, filename)
 
-        model = whisper.load_model("base")
+        model = whisper.load_model("large")
         results = model.transcribe(audio_file_name)
         transcript = ""
         for result in results["segments"]:
@@ -101,7 +101,7 @@ class VideoProcessor:
             )
 
         transcript_file_name = f"{filename}_transcript.srt"
-        with open(transcript_file_name, "w") as file:
+        with open(transcript_file_name, "w", encoding="utf-8") as file:
             file.write(transcript)
 
         kwargs["transcript_file_name"] = transcript_file_name
