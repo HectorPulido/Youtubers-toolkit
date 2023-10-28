@@ -3,3 +3,4 @@ matplotlib
 moviepy
 git+https://github.com/openai/whisper.git 
 denoiser
+python-dotenv

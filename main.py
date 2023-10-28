@@ -1,4 +1,5 @@
 import argparse
+from config import config_data
 from utils import str2bool
 from toolkit import VideoProcessor
 
@@ -65,6 +66,7 @@ if __name__ == "__main__":
             "clip_interval": clip_interval,
             "sound_threshold": sound_threshold,
             "discard_silence": discard_silence,
+            "config_data": config_data,
         }
 
         kwargs = video_processor.get_video_data(**kwargs)

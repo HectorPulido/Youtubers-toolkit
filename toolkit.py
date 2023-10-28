@@ -21,7 +21,7 @@ class VideoProcessor:
         return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:02d}"
 
     @staticmethod
-    def _get_audio(input_video_file_clip, filename):
+    def get_audio(input_video_file_clip, filename):
         audio_file_name = f"{filename}_audio.wav"
 
         if os.path.exists(audio_file_name):
@@ -85,7 +85,7 @@ class VideoProcessor:
             kwargs["filename"],
         )
 
-        audio_file_name = VideoProcessor._get_audio(input_video_file_clip, filename)
+        audio_file_name = VideoProcessor.get_audio(input_video_file_clip, filename)
 
         model = whisper.load_model("large")
         results = model.transcribe(audio_file_name)
@@ -118,7 +118,7 @@ class VideoProcessor:
             kwargs["filename"],
         )
 
-        audio_file_name = VideoProcessor._get_audio(input_video_file_clip, filename)
+        audio_file_name = VideoProcessor.get_audio(input_video_file_clip, filename)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = pretrained.dns64().to(device)
@@ -142,23 +142,24 @@ class VideoProcessor:
         subtitles_filename = kwargs.get(
             "transcript_file_name", f"{filename}_transcript_splitted.srt"
         )
+        config_data = kwargs.get("config_data", {})
 
         if not os.path.exists(subtitles_filename):
             subtitles_filename = f"{filename}_transcript.srt"
 
         def generator(txt):
-            return editor.TextClip(
-                txt,
-                font="Hey-Comic",
-                fontsize=60,
-                color="white",
-                method="label",
-                align="south",
-                bg_color="black",
-            )
+            return editor.TextClip(txt, **config_data["text_clip_config"])
 
         subtitles = SubtitlesClip(subtitles_filename, generator)
-        video_list = [input_video_file_clip, subtitles.set_pos(("center", input_video_file_clip.h - 300))]
+        video_list = [
+            input_video_file_clip,
+            subtitles.set_pos(
+                (
+                    "center",
+                    input_video_file_clip.h + config_data["text_position_y_offset"],
+                )
+            ),
+        ]
         video_with_subs = editor.CompositeVideoClip(video_list)
 
         kwargs["input_video_file_clip"] = video_with_subs
