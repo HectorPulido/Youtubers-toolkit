@@ -10,8 +10,23 @@ from moviepy.editor import (
     CompositeAudioClip,
 )
 from bark import generate_audio, preload_models, SAMPLE_RATE
-
+from pydub import AudioSegment
 from toolkit import VideoProcessor as vp
+
+
+def change_audio_speed(audio_file, speed):
+    name = f"{audio_file}_edited.wav"
+
+    print("Changing speed to: ", speed, " of audio file: ", audio_file)
+    if speed > 1:
+        sound = AudioSegment.from_file(audio_file)
+        so = sound.speedup(speed, 150, 25)
+        so.export(name)
+    else:
+        song, fs = librosa.load(audio_file)
+        audio_stretched = librosa.effects.time_stretch(y=song, rate=speed)
+        scipy.io.wavfile.write(name, fs, audio_stretched)
+    return name
 
 
 def video_translation(video_path_data):
@@ -58,6 +73,9 @@ def audio_generator(video_path_data, voice_info="v2/en_speaker_2", low_profile=T
         audio_clips = json.load(openfile)
 
     for segment in audio_clips:
+        if segment["audio_file"] != "":
+            continue
+
         audio_file = f"{video_path_data[:-4]}_generated_audio_{segment['id']}.wav"
         print("Writing: ", segment["text"], " to ", audio_file)
         audio_array = generate_audio(segment["text"], history_prompt=voice_info)
@@ -72,16 +90,12 @@ def audio_generator(video_path_data, voice_info="v2/en_speaker_2", low_profile=T
     clips = []
     for item in audio_clips:
         audio = AudioFileClip(item["audio_file"])
-
-        song, fs = librosa.load(item["audio_file"])
         duration = item["end"] - item["start"]
+        target_speed = audio.duration / duration
 
-        audio_stretched = librosa.effects.time_stretch(
-            y=song, rate=audio.duration / duration
-        )
-        scipy.io.wavfile.write(f"{item['audio_file']}_edited.wav", fs, audio_stretched)
+        audio_file = change_audio_speed(item["audio_file"], target_speed)
 
-        audio = AudioFileClip(f"{item['audio_file']}_edited.wav")
+        audio = AudioFileClip(audio_file)
         audio = audio.set_start(item["start"])
         clips.append(audio)
 
