@@ -62,6 +62,9 @@ python main.py vid_1.mp4 --pipeline denoise subtitles trim_by_silence save_separ
 ## For automatic video translate 
 Note: Only available translation to English
 
+If you want to clone your voice you can [try this code](https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer)
+
+
 First you must to install all the dependences with the command
 ~~~
 pip install -r dl_hardcore_requirements.txt
