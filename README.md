@@ -59,6 +59,24 @@ This will add subtitles to the video and cut the video by silences, all of this 
 python main.py vid_1.mp4 --pipeline denoise subtitles trim_by_silence save_separated_video -c 1&nbsp;
 ~~~
 
+## For automatic video translate 
+Note: Only available translation to English
+
+First you must to install all the dependences with the command
+~~~
+pip install -r dl_hardcore_requirements.txt
+~~~
+
+
+Generate the translation for the video
+~~~
+python voice_translator.py video_translation vid_1.mp4
+~~~
+
+Generate the video with the translation
+~~~
+python voice_translator.py audio_generator vid_1.mp4
+~~~
 
 <br>
 
