@@ -43,6 +43,15 @@ This will result in a merge the video with the subtitles
 python main.py vid_1.mp4 --pipeline subtitles save_join
 ~~~
 
+Separate audio from video
+~~~
+python separate_audio.py vid_1.mp4 vid_2.mp4
+~~~
+
+Join audio and video
+~~~
+python join_audio_with_video.py vid_1.mp4 
+~~~
 
 This will result in a merge of every non-silence part 
 ~~~
