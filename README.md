@@ -288,8 +288,6 @@ Contributions are welcome! If you have suggestions or improvements, feel free to
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 
-<br>
-
 <div align="center">
 <h3 align="center">Let's connect 😋</h3>
 </div>
