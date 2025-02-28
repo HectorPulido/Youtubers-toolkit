@@ -288,6 +288,8 @@ Contributions are welcome! If you have suggestions or improvements, feel free to
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 
+<br>
+
 <div align="center">
 <h3 align="center">Let's connect 😋</h3>
 </div>
@@ -300,5 +302,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 <img align="center" width="30px" alt="Hector's Twitch" src="https://www.vectorlogo.zone/logos/twitch/twitch-icon.svg"/></a> &nbsp; &nbsp;
 <a href="https://www.youtube.com/channel/UCS_iMeH0P0nsIDPvBaJckOw" target="blank">
 <img align="center" width="30px" alt="Hector's Youtube" src="https://www.vectorlogo.zone/logos/youtube/youtube-icon.svg"/></a> &nbsp; &nbsp;
+<a href="https://pequesoft.net/" target="blank">
+<img align="center" width="30px" alt="Pequesoft website" src="https://github.com/HectorPulido/HectorPulido/blob/master/img/pequesoft-favicon.png?raw=true"/></a> &nbsp; &nbsp;
 
-</p>
+
