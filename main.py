@@ -81,10 +81,10 @@ def voice_command(args):
     """Performs voice operations: video translation or audio generation."""
     if args.operation == "video_translation":
         logger.info("Starting video translation...")
-        video_translation(args.video_path, args.translate)
+        video_translation(args.video_path, args.translate, args.language)
     elif args.operation == "audio_generator":
         logger.info("Starting audio generation...")
-        audio_generator(args.video_path, args.voice, args.low_profile_mode)
+        audio_generator(args.video_path, args.voice)
     else:
         logger.error("Invalid operation. Use --help for more information.")
 
@@ -178,23 +178,21 @@ def main():
     parser_voice.add_argument(
         "-t",
         "--translate",
-        const=True,
-        default=True,
-        type=str2bool,
-        nargs="?",
-        help="Translate the video to English or transcribe in the same language",
+        type=str,
+        default="Helsinki-NLP/opus-mt-es-en",
+        help="Translation model to use",
     )
     parser_voice.add_argument(
         "--voice",
         type=str,
-        default="v2/en_speaker_2",
+        default="en-us/af_heart",
         help="Voice to use for translation",
     )
     parser_voice.add_argument(
-        "--low_profile_mode",
-        type=bool,
-        default=True,
-        help="Low profile mode for less powerful systems",
+        "--language",
+        type=str,
+        default="en",
+        help="Language for translation (default: en)",
     )
     parser_voice.set_defaults(func=voice_command)
 

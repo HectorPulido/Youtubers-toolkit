@@ -195,20 +195,16 @@ python main.py voice <operation> <video_path> [options]
 ### Options
 
 - **-t, --translate**:  
-  *Type:* boolean flag (using a string-to-boolean converter), *Default:* True  
+  *Type:* Model to use for translation, *Default:* `"Helsinki-NLP/opus-mt-es-en"`
   *Description:* Translate the video to English or transcribe in the same language.
 
 - **--voice**:  
-  *Type:* string, *Default:* `"v2/en_speaker_2"`  
+  *Type:* string, *Default:* `"en-us/af_heart"`  
   *Description:* Voice model to use for translation.
-
-- **--low_profile_mode**:  
-  *Type:* boolean, *Default:* True  
-  *Description:* Low profile mode for systems with less processing power.
 
 ### Example
 ```bash
-python main.py voice video_translation video1.mp4 -t False --voice v2/en_speaker_2
+python main.py voice video_translation video1.mp4 -t Helsinki-NLP/opus-mt-es-en --voice en-us/af_heart
 ```
 *This translates `video1.mp4` using the specified voice model, with translation turned off (if you only want transcription).*
 

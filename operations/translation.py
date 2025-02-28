@@ -1,12 +1,10 @@
-import os
 import json
 import logging
 from pathlib import Path
-
-import librosa
-import scipy
-import whisper
-from bark import SAMPLE_RATE, generate_audio, preload_models
+from faster_whisper import WhisperModel
+from kokoro import KPipeline
+from transformers import pipeline
+import soundfile as sf
 from moviepy.editor import AudioFileClip, CompositeAudioClip, VideoFileClip
 from pydub import AudioSegment
 
@@ -15,41 +13,55 @@ from utils import get_audio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+MODEL_SIZE = "turbo"
+
 
 def change_audio_speed(audio_file: str, speed: float) -> str:
     base = Path(audio_file).stem
     output_file = f"{base}_edited.wav"
+    speed = min(max(speed, 1), 1.4)
     logger.info("Changing speed to: %s of file: %s", speed, audio_file)
-    if speed > 1:
-        sound = AudioSegment.from_file(audio_file)
-        so = sound.speedup(speed, 150, 25)
-        so.export(output_file, format="wav")
-    else:
-        song, fs = librosa.load(audio_file)
-        audio_stretched = librosa.effects.time_stretch(song, rate=speed)
-        scipy.io.wavfile.write(output_file, fs, audio_stretched)
+    if speed == 1:
+        return audio_file
+
+    sound = AudioSegment.from_file(audio_file)
+    new_sound = sound.speedup(playback_speed=speed)
+    new_sound.export(output_file, format="wav")
+
     return output_file
 
 
-def video_translation(video_path: str, translate_data: bool = True):
+def video_translation(
+    video_path: str,
+    translate_data: str = "Helsinki-NLP/opus-mt-es-en",
+    language: str = "en",
+):
+    translator = None
+    if translate_data:
+        translator = pipeline("translation", translate_data)
+
     video_stem = Path(video_path).stem
     input_video_file_clip = VideoFileClip(video_path)
     audio_path = get_audio(input_video_file_clip, video_stem)
-    whisper_model = whisper.load_model("large")
-    transcribe_params = {"audio": audio_path, "task": "translate"}
-    if not translate_data:
-        logger.info("Just transcribing in the same language")
-        transcribe_params.pop("task", None)
-    results = whisper_model.transcribe(**transcribe_params)
+    whisper_model = WhisperModel(MODEL_SIZE)
+    transcribe_params = {
+        "audio": audio_path,
+        "language": language,
+        "multilingual": True,
+    }
+    results, _ = whisper_model.transcribe(**transcribe_params)
     audio_info = []
-    for segment in results.get("segments", []):
+    for segment in results:
+        if translator:
+            segment.text = translator(segment.text)[0]["translation_text"]
+
         audio_info.append(
             {
-                "id": segment["id"],
-                "text": segment["text"].strip(),
+                "id": segment.id,
+                "text": segment.text.strip(),
                 "audio_file": "",
-                "start": segment["start"],
-                "end": segment["end"],
+                "start": segment.start,
+                "end": segment.end,
             }
         )
     json_file = f"{video_stem}_audio_info.json"
@@ -58,13 +70,11 @@ def video_translation(video_path: str, translate_data: bool = True):
     logger.info("Audio info saved in: %s. Check it before generating audio.", json_file)
 
 
-def audio_generator(
-    video_path: str, voice_info: str = "v2/en_speaker_2", low_profile: bool = True
-):
-    if low_profile:
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
-        os.environ["SUNO_USE_SMALL_MODELS"] = "1"
-    preload_models()
+def audio_generator(video_path: str, voice_info: str = "en-us/af_heart"):
+    lang_code = voice_info.split("/")[0]
+    voice = voice_info.split("/")[1]
+    vpipeline = KPipeline(lang_code=lang_code)
+
     video_stem = Path(video_path).stem
     json_file = f"{video_stem}_audio_info.json"
     with open(json_file, "r", encoding="utf-8") as openfile:
@@ -74,8 +84,15 @@ def audio_generator(
             continue
         audio_file = f"{video_stem}_generated_audio_{segment['id']}.wav"
         logger.info("Generating audio for: %s in %s", segment["text"], audio_file)
-        audio_array = generate_audio(segment["text"], history_prompt=voice_info)
-        scipy.io.wavfile.write(audio_file, rate=SAMPLE_RATE, data=audio_array)
+        generator = vpipeline(
+            segment["text"].replace("\n", ""),
+            voice=voice,
+            speed=1,
+            split_pattern=r"\n+",
+        )
+        for _, (__, ___, audio) in enumerate(generator):
+            sf.write(audio_file, audio, 24000)
+            break
         segment["audio_file"] = audio_file
     with open(json_file, "w", encoding="utf-8") as outfile:
         json.dump(audio_clips, outfile, indent=2)
