@@ -1,12 +1,35 @@
 {
-    "text_clip_config": {
+    "subtitles_clip_config": {
         "font": "Hey-Comic",
         "fontsize": 60,
         "color": "white",
         "method": "label",
         "align": "south",
-        "bg_color": "black"
+        "bg_color": "black",
+        "stroke_color": null,
+        "stroke_width": null
     },
-    "text_position_y_offset": -500,
-    "text_position_x_offset": 0
+    "subtitles_position": {
+        "text_position_y_offset": -500,
+        "text_position_x_offset": 0
+    },
+    "titles_clip_config": {
+        "font": "Hey-Comic",
+        "fontsize": 90,
+        "color": "black",
+        "method": "label",
+        "align": "south",
+        "bg_color": "transparent",
+        "stroke_color": "black",
+        "stroke_width": 1.5
+    },
+    "titles_position": {
+        "text_position_y_offset": 500,
+        "text_position_x_offset": 0
+    },
+    "titles": [
+        "",
+        "Video completo en la descripcion.",
+        "Suscribete para mas."
+    ]
 }
