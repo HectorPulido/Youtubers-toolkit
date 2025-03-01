@@ -108,7 +108,15 @@ def audio_generator(video_path: str, voice_info: str = "en-us/af_heart"):
     composite_audio = CompositeAudioClip(clips).subclip(
         0, input_video_file_clip_no_audio.duration
     )
+
     final_video = input_video_file_clip_no_audio.set_audio(composite_audio)
+    # Aseguramos que el clip mantenga el tamaño original
+    final_video = final_video.resize(input_video_file_clip_no_audio.size)
     final_video_name = f"{video_stem}_final_video.mp4"
-    final_video.write_videofile(final_video_name, audio_codec="aac")
+    final_video.write_videofile(
+        final_video_name,
+        codec="libx264",  # Especificamos el codec de video
+        audio_codec="aac",
+        ffmpeg_params=["-vf", "scale=iw:ih"],
+    )
     logger.info("Final video saved in: %s", final_video_name)
