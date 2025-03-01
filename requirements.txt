@@ -9,5 +9,5 @@ scipy==1.15.2
 pydub==0.25.1
 kokoro==0.7.13
 soundfile==0.13.1
-transformers==4.33.2
+transformers==4.48.0
 sentencepiece==0.1.99
