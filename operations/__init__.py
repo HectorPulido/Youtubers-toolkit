@@ -7,3 +7,4 @@ from .trim import *
 from .split_srt import split_srt
 from .translation import video_translation, audio_generator
 from .shorts import generate_video_base, add_titles
+from .avatar_video_generation import generate_avatar_video

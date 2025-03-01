@@ -16,11 +16,23 @@ def str2bool(v):
     raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
-def get_subclip_volume(subclip, start: float, interval: float) -> float:
-    audio_array = subclip.subclip(start, start + interval).audio.to_soundarray(
-        fps=44100
-    )
+def get_subclip_volume(clip, start: float, interval: float) -> float:
+    subclip = clip.subclip(start, start + interval)
+    audio = subclip.audio
+    try:
+        # Intentamos obtener el array de audio normalmente.
+        audio_array = audio.to_soundarray(fps=44100)
+    except TypeError:
+        # Si falla, convertimos el iterador a lista y luego usamos np.vstack.
+        audio_array = np.vstack(list(audio.iter_chunks(fps=44100)))
     return np.sqrt((audio_array**2).mean())
+
+
+def get_subclip_volume_segment(audio_segment, start: float, duration: float) -> float:
+    start_ms = int(start * 1000)
+    end_ms = int((start + duration) * 1000)
+    segment = audio_segment[start_ms:end_ms]
+    return segment.rms
 
 
 def float_to_srt_time(seconds: float) -> str:
@@ -49,3 +61,20 @@ def get_video_data(**kwargs):
     kwargs["filename"] = filename
     kwargs["input_video_file_clip"] = input_video_file_clip
     return kwargs
+
+
+def apply_shake(clip, shake_intensity: float):
+    """
+    Apply shake effect to a clip.
+    The image is randomly shifted in x and y according to the intensity.
+    """
+
+    def shake_transform(get_frame, t):
+        frame = get_frame(t)
+        dx = int(np.random.uniform(-shake_intensity, shake_intensity))
+        dy = int(np.random.uniform(-shake_intensity, shake_intensity))
+        shaken_frame = np.roll(frame, dx, axis=1)
+        shaken_frame = np.roll(shaken_frame, dy, axis=0)
+        return shaken_frame
+
+    return clip.fl(shake_transform)

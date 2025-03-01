@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+import json
 
 from moviepy.editor import VideoFileClip
 from operations import (
@@ -18,6 +19,7 @@ from operations import (
     split_srt,
     trim_by_silence,
     video_translation,
+    generate_avatar_video,
 )
 from config_loader import config_data
 from utils import get_audio, get_video_data, str2bool
@@ -104,6 +106,18 @@ def generator_command(args):
             )
             continue
         tools[args.tool](file)
+
+
+def video_gen_avatar_command(args):
+    """Generates a video with avatars based on emotions."""
+
+    config = None
+    with open(args.config, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    print(config)
+
+    for file in args.files:
+        generate_avatar_video(file, config)
 
 
 def main():
@@ -207,6 +221,16 @@ def main():
         help="Tool to use: base, add_titles",
     )
     parser_generator.set_defaults(func=generator_command)
+
+    # Subcommand for avatar video generation
+    parser_avatar = subparsers.add_parser(
+        "avatar_video_generation", help="Avatar video generation"
+    )
+    parser_avatar.add_argument("files", type=str, nargs="+", help="File(s) to process")
+    parser_avatar.add_argument(
+        "config", type=str, help="Path to the configuration file"
+    )
+    parser_avatar.set_defaults(func=video_gen_avatar_command)
 
     args = parser.parse_args()
     args.func(args)
