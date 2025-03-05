@@ -33,6 +33,7 @@ def save_separated_video(**kwargs):
     clips = kwargs["clips"]
     clips_format = f"{filename}_EDITED_{{i}}.mp4"
     for i, clip in enumerate(clips):
-        clip.write_videofile(clips_format.format(i=i), audio_codec="aac")
+        pad_i = str(i).zfill(5)
+        clip.write_videofile(clips_format.format(i=pad_i), audio_codec="aac")
     kwargs["clips_name"] = clips_format.format(i="{i}")
     return kwargs

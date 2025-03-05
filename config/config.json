@@ -1,0 +1,9 @@
+{
+    "avatars": {
+        "avatar_calm": "config/avatar_calm.mp4",
+        "avatar_angry": "config/avatar_angry.mp4",
+        "avatar_sad": "config/avatar_sad.mp4",
+        "avatar_wow": "config/avatar_wow.mp4"
+    },
+    "shake_factor": 5
+}

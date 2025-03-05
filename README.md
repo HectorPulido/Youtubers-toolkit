@@ -266,7 +266,6 @@ This will display all available options and arguments for that command.
   - **trim.py:** Implements silence detection and video trimming.
   - **translation.py:** Handles video translation and audio generation.
   - **denoise.py:** Applies denoising filters using deep learning models.
-  - **split_srt.py:** Splits SRT files based on word count per subtitle.
 
 ## Configuration
 

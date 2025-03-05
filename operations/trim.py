@@ -18,6 +18,8 @@ def trim_by_silence(**kwargs):
     for i in np.arange(0, input_video_file_clip.duration, clip_interval):
         if input_video_file_clip.duration <= i + clip_interval:
             continue
+        logger.info("Processing chunk %s/%s", i, input_video_file_clip.duration)
+
         volumes.append(get_subclip_volume(input_video_file_clip, i, clip_interval))
     logger.info("Processing silences...")
     volumes = np.array(volumes)

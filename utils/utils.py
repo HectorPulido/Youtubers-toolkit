@@ -16,16 +16,9 @@ def str2bool(v):
     raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
-def get_subclip_volume(clip, start: float, interval: float) -> float:
-    subclip = clip.subclip(start, start + interval)
-    audio = subclip.audio
-    try:
-        # Intentamos obtener el array de audio normalmente.
-        audio_array = audio.to_soundarray(fps=44100)
-    except TypeError:
-        # Si falla, convertimos el iterador a lista y luego usamos np.vstack.
-        audio_array = np.vstack(list(audio.iter_chunks(fps=44100)))
-    return np.sqrt((audio_array**2).mean())
+def get_subclip_volume(subclip, second, interval):
+    cut = subclip.subclip(second, second + interval).audio.to_soundarray(fps=44100)
+    return np.sqrt(((1.0 * cut) ** 2).mean())
 
 
 def get_subclip_volume_segment(audio_segment, start: float, duration: float) -> float:

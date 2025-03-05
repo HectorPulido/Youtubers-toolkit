@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+"""
+Main script for video editing and processing.
+"""
+
 import argparse
 import logging
 import json
@@ -16,10 +20,10 @@ from operations import (
     save_video,
     set_horizontal,
     set_vertical,
-    split_srt,
     trim_by_silence,
     video_translation,
     generate_avatar_video,
+    generate_transcript_divided,
 )
 from config_loader import config_data
 from utils import get_audio, get_video_data, str2bool
@@ -32,6 +36,7 @@ functions_dict = {
     "trim_by_silence": trim_by_silence,
     "denoise": denoise_video,
     "transcript": generate_transcript,
+    "transcript_divided": generate_transcript_divided,
     "subtitles": add_subtitles,
     "save_separated_video": save_separated_video,
     "save_join": save_joined_video,
@@ -68,16 +73,6 @@ def separate_audio_command(args):
         clip = VideoFileClip(file)
         audio_path = get_audio(clip, file[:-4])
         logger.info("Audio saved to: %s", audio_path)
-
-
-def split_str_command(args):
-    """Splits SRT files into parts based on the specified number of words."""
-    for file in args.files:
-        output_file = f"{file[:-4]}_splitted.srt"
-        with open(output_file, "w", encoding="utf-8") as file_data:
-            file_data.write(split_srt(file, args.words_per_subtitle))
-        logger.info("Split file saved to: %s", output_file)
-
 
 def voice_command(args):
     """Performs voice operations: video translation or audio generation."""
@@ -121,6 +116,9 @@ def video_gen_avatar_command(args):
 
 
 def main():
+    """
+    Main function to parse arguments
+    """
     parser = argparse.ArgumentParser(
         description="Combined program for video editing and processing"
     )
@@ -166,16 +164,6 @@ def main():
     )
     parser_separate.add_argument("files", type=str, nargs="+", help="Video file(s)")
     parser_separate.set_defaults(func=separate_audio_command)
-
-    # Subcommand for split_str
-    parser_split = subparsers.add_parser("split_str", help="Split SRT files")
-    parser_split.add_argument("files", type=str, nargs="+", help="SRT file(s) to split")
-    parser_split.add_argument(
-        "words_per_subtitle",
-        type=int,
-        help="Number of words per subtitle",
-    )
-    parser_split.set_defaults(func=split_str_command)
 
     # Subcommand for voice operations
     parser_voice = subparsers.add_parser(
