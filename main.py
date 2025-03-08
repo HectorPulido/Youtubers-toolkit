@@ -74,6 +74,7 @@ def separate_audio_command(args):
         audio_path = get_audio(clip, file[:-4])
         logger.info("Audio saved to: %s", audio_path)
 
+
 def voice_command(args):
     """Performs voice operations: video translation or audio generation."""
     if args.operation == "video_translation":

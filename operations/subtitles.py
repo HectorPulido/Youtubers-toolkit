@@ -1,9 +1,17 @@
+"""
+Module to add subtitles to a video using moviepy.
+"""
+
 import os
 from moviepy.editor import TextClip, CompositeVideoClip
 from moviepy.video.tools.subtitles import SubtitlesClip
 
 
 def add_subtitles(**kwargs):
+    """
+    Add subtitles to a video clip.
+    """
+
     def generator(txt):
         return TextClip(txt, **config_data["subtitles_clip_config"])
 

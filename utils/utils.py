@@ -1,3 +1,7 @@
+"""
+Module to handle video processing and audio extraction.
+"""
+
 import os
 import argparse
 from pathlib import Path
@@ -7,6 +11,9 @@ from moviepy.editor import VideoFileClip
 
 
 def str2bool(v):
+    """
+    Convert a string to a boolean value.
+    """
     if isinstance(v, bool):
         return v
     if v.lower() in ("yes", "true", "t", "y", "1"):
@@ -17,11 +24,17 @@ def str2bool(v):
 
 
 def get_subclip_volume(subclip, second, interval):
+    """
+    Get the volume of a subclip.
+    """
     cut = subclip.subclip(second, second + interval).audio.to_soundarray(fps=44100)
     return np.sqrt(((1.0 * cut) ** 2).mean())
 
 
 def get_subclip_volume_segment(audio_segment, start: float, duration: float) -> float:
+    """
+    Get the volume of a segment of an audio file.
+    """
     start_ms = int(start * 1000)
     end_ms = int((start + duration) * 1000)
     segment = audio_segment[start_ms:end_ms]
@@ -29,6 +42,9 @@ def get_subclip_volume_segment(audio_segment, start: float, duration: float) -> 
 
 
 def float_to_srt_time(seconds: float) -> str:
+    """
+    Convert a float to SRT time format.
+    """
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     sec = int(seconds % 60)
@@ -37,6 +53,9 @@ def float_to_srt_time(seconds: float) -> str:
 
 
 def get_audio(input_video_file_clip, filename: str) -> str:
+    """
+    Extract audio from a video file and save it as a WAV file.
+    """
     base = Path(filename)
     audio_file_name = f"{base}_audio.wav"
     audio_path = Path(audio_file_name)
@@ -47,6 +66,9 @@ def get_audio(input_video_file_clip, filename: str) -> str:
 
 
 def get_video_data(**kwargs):
+    """
+    Get video data from the input video file.
+    """
     video_path = kwargs["video_path"]
     filename = os.path.splitext(os.path.basename(video_path))[0]
     input_video_file_clip = VideoFileClip(video_path)

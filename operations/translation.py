@@ -1,3 +1,7 @@
+"""
+Module for video translation and audio generation.
+"""
+
 import json
 import logging
 from pathlib import Path
@@ -17,6 +21,9 @@ MODEL_SIZE = "turbo"
 
 
 def change_audio_speed(audio_file: str, speed: float) -> str:
+    """
+    Change the speed of an audio file and save it as a new file.
+    """
     base = Path(audio_file).stem
     output_file = f"{base}_edited.wav"
     speed = min(max(speed, 1), 1.4)
@@ -36,6 +43,9 @@ def video_translation(
     translate_data: str = "Helsinki-NLP/opus-mt-es-en",
     language: str = "en",
 ):
+    """
+    Transcribe and translate the audio from a video file.
+    """
     translator = None
     if translate_data:
         translator = pipeline("translation", translate_data)
@@ -71,6 +81,9 @@ def video_translation(
 
 
 def audio_generator(video_path: str, voice_info: str = "en-us/af_heart"):
+    """
+    Generate audio for a video using the specified voice.
+    """
     lang_code = voice_info.split("/")[0]
     voice = voice_info.split("/")[1]
     vpipeline = KPipeline(lang_code=lang_code)

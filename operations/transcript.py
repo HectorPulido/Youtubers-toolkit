@@ -44,7 +44,9 @@ def generate_transcript_divided(**kwargs):
     )
     audio_file_name = get_audio(input_video_file_clip, filename)
     model = WhisperModel(MODEL_SIZE)
-    segments, _ = model.transcribe(audio_file_name, multilingual=True, word_timestamps=True)
+    segments, _ = model.transcribe(
+        audio_file_name, multilingual=True, word_timestamps=True
+    )
     transcript = ""
     segment_id = 1
 

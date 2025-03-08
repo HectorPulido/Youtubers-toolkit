@@ -1,8 +1,15 @@
+"""
+Module to denoise audio in a video file using the DNS64 model.
+"""
+
 from moviepy import editor
 from utils import get_audio
 
 
 def denoise_video(**kwargs):
+    """
+    Denoise the audio of a video file using the DNS64 model.
+    """
     try:
         import torch
         import torchaudio

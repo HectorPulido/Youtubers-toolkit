@@ -1,3 +1,7 @@
+"""
+Module to trim a video by silence.
+"""
+
 import logging
 import numpy as np
 
@@ -9,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def trim_by_silence(**kwargs):
+    """
+    Function to trim a video by silence.
+    """
     input_video_file_clip = kwargs["input_video_file_clip"]
     clip_interval = kwargs["clip_interval"]
     sound_threshold = kwargs["sound_threshold"]

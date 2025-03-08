@@ -1,3 +1,7 @@
+"""
+Module to generate a video with a blurred background and add titles.
+"""
+
 import os
 import logging
 from pathlib import Path
@@ -12,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 def blur_video(video_path: str) -> str:
+    """
+    Blurs the video and saves it with a new name.
+    """
     new_video_path = f"blurred_{Path(video_path).name}"
     with VideoFileClip(video_path) as video:
         video_wo_audio = video.without_audio()
@@ -27,6 +34,9 @@ def blur_video(video_path: str) -> str:
 
 
 def generate_video_base(video_path_data: str, video_size=(1080, 1920)):
+    """
+    Generates a base video with a blurred background and the original video on top.
+    """
     video_path_output = f"output_{Path(video_path_data).name}"
     blurred_video_name = blur_video(video_path_data)
     blurred_video = VideoFileClip(blurred_video_name).resize(height=video_size[1])
@@ -43,6 +53,9 @@ def generate_video_base(video_path_data: str, video_size=(1080, 1920)):
 
 
 def add_titles(video_path: str):
+    """
+    Adds titles to the video.
+    """
     video = VideoFileClip(video_path)
     title_clips = []
     duration = 3  # Duración de cada título
