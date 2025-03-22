@@ -6,6 +6,20 @@ import subprocess
 import sys
 import os
 
+def translate_video(video):
+    """
+    Translates the video using the 'video_translation' pipeline.
+    Command:
+
+    translate: Helsinki-NLP/opus-mt-es-en
+    voice: en-us/am_fenrir
+
+    1. python main.py voice video_translation {video} --translate Helsinki-NLP/opus-mt-es-en
+    2. 
+    
+    """
+    
+
 
 def separate_video(video):
     """
