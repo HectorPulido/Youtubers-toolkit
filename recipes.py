@@ -6,19 +6,16 @@ import subprocess
 import sys
 import os
 
-def translate_video(video):
+
+def transcribe_video(video):
     """
-    Translates the video using the 'video_translation' pipeline.
+    Transcribes the video using the 'video_transcription' pipeline.
     Command:
-
-    translate: Helsinki-NLP/opus-mt-es-en
-    voice: en-us/am_fenrir
-
-    1. python main.py voice video_translation {video} --translate Helsinki-NLP/opus-mt-es-en
-    2. 
-    
+    python main.py video_edit {video} --pipeline transcript
     """
-    
+
+    command = f"python main.py video_edit {video} --pipeline transcript"
+    subprocess.run(command, shell=True, check=True)
 
 
 def separate_video(video):
@@ -62,7 +59,7 @@ def generate_short_base(video):
         f"python main.py video_edit {video} --pipeline transcript_divided && "
         f"mv {base_name}_transcript.srt output_{base_name}_transcript.srt && "
         f"python main.py generator {video} base && "
-        f"python main.py video_edit {video} --pipeline subtitles save_join"
+        f"python main.py video_edit output_{video} --pipeline subtitles save_join"
     )
     subprocess.run(command, shell=True, check=True)
 
@@ -87,6 +84,8 @@ def main():
         generate_avatar(video)
     elif command == "generate_short_base":
         generate_short_base(video)
+    elif command == "transcribe_video":
+        transcribe_video(video)
     else:
         print("Command not recognized.")
         sys.exit(1)
