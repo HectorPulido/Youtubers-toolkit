@@ -26,6 +26,7 @@ def gen_video_titles(videos_string: str, num_of_titles: str) -> str:
     and generate a brief summary about their style.
     """
     prompt = f"""
+    You are a World wide known Youtuber, even bigger than MR Beast, and you are a master of creating killer video titles.
     Your objective is to generate {num_of_titles} perfects videos titles for this video.
     Here are some guidelines for title generation
     <guidelines>
@@ -284,14 +285,14 @@ if __name__ == "__main__":
     # Videos from a YouTube channel, just copy and paste the list of videos in a videos.txt file
     with open("video_transcription.txt", "r", encoding="utf-8") as file:
         video_transcription = file.read()
-    titles = gen_video_titles(video_transcription, "15")
+    titles = gen_video_titles(video_transcription, "10")
     print("\n=== 10 INITIAL VIDEO TITLES ===")
     print(titles)
     titles_json = try_to_load_json(_client, MODEL, titles)
 
     with open("videos_to_compare.json", "r", encoding="utf-8") as file:
         comparations = try_to_load_json(_client, MODEL, file.read())
-    titles_results = validate_titles(titles_json, comparations, 10)
+    titles_results = validate_titles(titles_json, comparations, 5)
 
     with open("ignore_final_video_titles.json", "w", encoding="utf-8") as file:
         file.write(json.dumps(titles_results))
