@@ -1,2 +1,4 @@
-*.txt
 *.env
+ignore_*
+*.ipynb
+video_transcription.txt

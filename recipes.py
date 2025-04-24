@@ -23,10 +23,10 @@ def separate_video(video):
     Separates the video using the 'trim_by_silence' pipeline.
     Command:
     python main.py video_edit {video} --pipeline \
-        trim_by_silence save_separated_video -c 0.25 -s 0.01 -d False
+        trim_by_silence save_separated_video -c 0.25 -s 0.01 -d True
     """
     command = f"python main.py video_edit {video} --pipeline \
-        trim_by_silence save_separated_video -c 0.25 -s 0.01 -d False"
+        trim_by_silence save_separated_video -c 0.25 -s 0.01 -d True"
     subprocess.run(command, shell=True, check=True)
 
 

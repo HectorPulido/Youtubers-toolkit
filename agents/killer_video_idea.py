@@ -2,17 +2,19 @@
 This script generates unique and engaging YouTube video ideas for a specific channel
 """
 
-import json
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
 try:
-    from .utils import try_to_load_json
+    from .utils import get_youtube_data, try_to_load_json
+    from .persona_testing import PersonaTester
 except ImportError:
-    from utils import try_to_load_json
+    from utils import get_youtube_data, try_to_load_json
+    from persona_testing import PersonaTester
 
 load_dotenv()
 
@@ -68,6 +70,7 @@ def chain_summarize_style(videos_string: str) -> str:
     
     TASK:
         Summarize the main themes, style, and audience interest found in the videos described above.
+        Add also the language of the videos.
     """
     response = _client.chat.completions.create(
         model=MODEL,
@@ -93,7 +96,9 @@ def chain_generate_ideas(summarized_style: str, num_ideas: int = 15) -> list:
     TASK:
     1. Propose at least {num_ideas} different video ideas (Topic -> Angle -> Hook).
     2. Make sure these ideas align with the YouTuber's direction and style.
-    3. Keep them creative and unique.
+    3. Keep them creative and unique don't use the same ideas as the examples.
+    4. Use the same language as the YouTuber's style.
+    5. Focus on doable ideas, not impossible ones.
 
     Return your response in a JSON format like this, do not return anything else:
     [
@@ -116,7 +121,7 @@ def chain_generate_ideas(summarized_style: str, num_ideas: int = 15) -> list:
     return try_to_load_json(_client, MODEL, response_final)
 
 
-def chain_criticize_and_refine(ideas: dict) -> dict:
+def chain_criticize_and_refine(ideas: dict, testing: dict) -> dict:
     """
     This chain "critique" and refines the generated list of ideas.
     """
@@ -131,12 +136,19 @@ def chain_criticize_and_refine(ideas: dict) -> dict:
     <ideas>
     {ideas}
     </ideas>
+
+    AND BELOW is how the ideas performed on the testing, a good testing is >50%:
+    <testing_results>
+    {testing}
+    </testing_results>
     
     TASK:
     1. Critique each idea concisely, pointing out any weak or cliché aspects.
     2. Suggest a refined or improved version if necessary.
     3. The goal is to transform each idea into a truly outstanding, fresh concept.
-
+    4. Use the same language as the ideas.
+    5. Make sure the ideas are doable, not impossible ones.
+    
     Return the refined ideas, maintaining the (Topic, Angle, Hook) format but incorporating your improvements.
 
     And add if not existing a WOW FACTOR to each idea.
@@ -158,98 +170,102 @@ def chain_criticize_and_refine(ideas: dict) -> dict:
     return try_to_load_json(_client, MODEL, response_final)
 
 
-def chain_select_best_ideas(
-    refined_ideas: dict, summarized_style: str, n_ideas=10
-) -> str:
-    """
-    Take the refined ideas and select the N best ones based on their uniqueness
-    """
-
-    prompt = f"""
-    You are an AI assistant that selects the {n_ideas} most promising video ideas 
-    from the refined list below.
-    <ideas>
-    {refined_ideas}
-    </ideas>
-
-    SUMMARY OF THE YOUTUBER'S STYLE:
-    <youtuber_style>
-    {summarized_style}
-    </youtuber_style>
-    
-    {WHATS_AN_IDEA}
-
-    TASK:
-    1. From the ideas set, Calify them as the best ideas based on their uniqueness, engagement potential, and alignment with the YouTuber's style with a number from 1 to 10.
-    2. Return the best {n_ideas} them in a clear format: (Topic, Angle, Hook, And WOW factor).
-
-    Only the final {n_ideas} winning ideas.
-    """
-    response = _client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content.strip()
-
-
 def iterative_idea_generator(
     videos_string: str,
     iterations: int = 2,
     num_initial_ideas: int = 100,
-    num_final_ideas: int = 10,
+    persona: PersonaTester = None,
 ) -> str:
     """
     1. Summary of the style of the channel
     2. Generate several initial ideas
-    3. Iterate the critique/refinement N times (iterations)
-    4. Select the 10 best final ideas
+    3. Test the video ideas using the personas
+    4. Remove the ideas with a testing result <10%
+    5. Critique and refine the ideas
+    6. Repeat the process N times
+    7. Return the final ideas
     """
 
+    # 1. Resumen de estilo
     style_summary = chain_summarize_style(videos_string)
     print(f"\n--- Style Summary ---\n{style_summary}")
 
+    # 2. Generar ideas iniciales
     ideas_current = chain_generate_ideas(style_summary, num_ideas=num_initial_ideas)
-    print(f"\n--- Initial Ideas ---\n{ideas_current}")
+    print(f"\n--- Initial Ideas ({len(ideas_current)}) ---\n{ideas_current}")
 
     for i in range(1, iterations + 1):
-        with ThreadPoolExecutor() as executor:
-            futures = {}
-            for idx, idea in enumerate(ideas_current):
-                idea_str = json.dumps(idea, ensure_ascii=False)
-                # Lanzamos la tarea en paralelo
-                future = executor.submit(chain_criticize_and_refine, idea_str)
-                futures[future] = idx
+        # Extraer sólo los títulos
+        idea_topics = [idea["Topic"] for idea in ideas_current]
 
-            for future in as_completed(futures):
-                idx = futures[future]
-                feedback_idea = future.result()
-                del feedback_idea["Feedback"]
-                ideas_current[idx] = feedback_idea
+        # 3. Testeo en lote (una sola llamada, devuelve lista ordenada según idea_topics)
+        testing_results = persona.test_multiples_videos(titles=idea_topics, checks=20)
+        print(f"\n--- Testing Results ({len(testing_results)}) ---\n{testing_results}")
 
+        # 4. Filtrar ideas con percentage < 10%
+        kept = [
+            (idea, result)
+            for idea, result in zip(ideas_current, testing_results)
+            if result["percentage"] >= 10
+        ]
+        ideas_filtered, results_filtered = zip(*kept) if kept else ([], [])
+        ideas_current = list(ideas_filtered)
+        testing_results = list(results_filtered)
+
+        # 5. Paralelizar crítica y refinamiento
+        refined = [None] * len(ideas_current)
+        with ThreadPoolExecutor(max_workers=len(ideas_current) or 1) as executor:
+            # Lanzar tareas con su índice
+            future_to_idx = {
+                executor.submit(chain_criticize_and_refine, idea, result): idx
+                for idx, (idea, result) in enumerate(
+                    zip(ideas_current, testing_results)
+                )
+            }
+            for future in as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                idea_refined = future.result()
+                # Actualizar porcentaje y limpiar feedback
+                idea_refined["Likeness_percentage"] = testing_results[idx]["percentage"]
+                idea_refined.pop("Feedback", None)
+                refined[idx] = idea_refined
+
+        ideas_current = refined
         print(
-            f"\n--- Iteration {i}: Critiquing and Refining Ideas ---\n{ideas_current}"
+            f"\n--- Iteration {i}: Critiquing and Refining Ideas ({len(ideas_current)}) ---"
         )
 
-    final_ideas = chain_select_best_ideas(ideas_current, style_summary, num_final_ideas)
-    print(f"\n--- Final Ideas ---\n{final_ideas}")
-
-    return final_ideas
+    return ideas_current
 
 
 if __name__ == "__main__":
-    # Videos from a YouTube channel, just copy and paste the list of videos in a videos.txt file
-    with open("videos.txt", "r", encoding="utf-8") as file:
-        VIDEOS_STRING_EXAMPLE = file.read()
+    if len(sys.argv) < 2 or len(sys.argv) > 2:
+        print("Usage: python killer_video_idea.py <channel_name>")
+        sys.exit(1)
+
+    channel_name = sys.argv[1]
+    channel_data = get_youtube_data(channel_name)
+    if not channel_data or len(channel_data) < 1:
+        print("Error: Unable to retrieve channel data.")
+        sys.exit(1)
+
+    channel_data = channel_data[:25]
+
+    persona_tester = PersonaTester(
+        model=MODEL,
+        client=_client,
+        comparation_path="videos_to_compare.json",
+    )
 
     _final_ideas = iterative_idea_generator(
-        videos_string=VIDEOS_STRING_EXAMPLE,
+        videos_string=channel_data,
         iterations=3,
         num_initial_ideas=25,
-        num_final_ideas=5,
+        persona=persona_tester,
     )
 
     print("\n=== 10 FINAL VIDEO IDEAS (TOPIC -> ANGLE -> HOOK) ===")
     print(_final_ideas)
 
-    with open("final_video_ideas.txt", "w", encoding="utf-8") as file:
+    with open("ignore_video_ideas.txt", "w", encoding="utf-8") as file:
         file.write(_final_ideas)

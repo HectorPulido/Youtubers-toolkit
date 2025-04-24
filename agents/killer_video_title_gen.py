@@ -1,15 +1,20 @@
-import random
+"""
+This script generates killer video titles for YouTube videos using OpenAI's API.
+"""
+
 import os
 import json
 
-from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from openai import OpenAI
 
 try:
     from .utils import try_to_load_json
+    from .persona_testing import PersonaTester
 except ImportError:
     from utils import try_to_load_json
+    from persona_testing import PersonaTester
+
 load_dotenv()
 MODEL = os.getenv("MODEL", "o3-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -20,14 +25,14 @@ _client = OpenAI(
 )
 
 
-def gen_video_titles(videos_string: str, num_of_titles: str) -> str:
+def gen_video_titles(videos_string: str, num_of_titles: int) -> str:
     """
     Take the description (videos_string) of the existing YouTuber videos
     and generate a brief summary about their style.
     """
     prompt = f"""
     You are a World wide known Youtuber, even bigger than MR Beast, and you are a master of creating killer video titles.
-    Your objective is to generate {num_of_titles} perfects videos titles for this video.
+    Your objective is to generate {str(num_of_titles)} perfects videos titles for this video.
     Here are some guidelines for title generation
     <guidelines>
         Especially at higher levels of YouTube, they stress me out all the time. But I was reviewing some videos shared to this subreddit and I noticed that the vast majority of small creators just completely have the wrong ideas when it comes to titles. And this isn't a roast, it's hard to know where to start with titles, especially if you have no guidance. So here's some guidance.
@@ -188,111 +193,25 @@ def gen_video_titles(videos_string: str, num_of_titles: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def test_video(titles_to_compare, title_to_test, persona):
-    """
-    Test the title against a list of titles to compare.
-    """
-    videos = titles_to_compare.copy()
-    videos.append(title_to_test)
-    random.shuffle(videos)
-    title_to_test_index = videos.index(title_to_test) + 1
-    videos_str = "\n".join([f"{idx + 1}. {video}" for idx, video in enumerate(videos)])
-    prompt = f"""
-        You are {persona}
-        You are on your youtube feed and some videos are showing
-        <videos>
-        {videos_str}
-        </videos>
-        Which video do you click? Respond only one number inside "", nothing else
-        eg. "<my_selected_title_number_video>"
-    """
-    response = _client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    selected = response.choices[0].message.content.strip()
-    # print(f"Selected: {selected}")
-    # print(title_to_test_index)
-    # print(f'"{title_to_test_index}"' in selected)
-
-    return f'"{title_to_test_index}"' in selected
-
-
-def validate_titles(titles_data, comparations_data, checks=5):
-    """
-    Valida los títulos generados por el modelo de IA de forma altamente paralelizada.
-
-    Se envían todas las tareas de prueba a la vez utilizando un único ThreadPoolExecutor,
-    lo que permite ejecutar en paralelo cada llamada a test_video para todas las combinaciones
-    de título, persona y número de comprobaciones.
-    """
-    user_personas = comparations_data["user_personas"]
-    titles_to_compare = comparations_data["titles"]
-    titles_data += comparations_data.get("extra_titles", [])
-
-    # Inicializamos un diccionario para almacenar los resultados de cada título.
-    results_by_title = {title: {"selected": 0, "shown": 0} for title in titles_data}
-    tasks = []
-    results = []
-
-    with ThreadPoolExecutor() as executor:
-        # Enviar todas las tareas concurrentemente.
-        for title in titles_data:
-            for persona in user_personas:
-                for _ in range(checks):
-                    future = executor.submit(
-                        test_video, titles_to_compare, title, persona
-                    )
-                    tasks.append((title, future))
-
-        # Recopilar y agrupar los resultados por título.
-        for title, future in tasks:
-            try:
-                result = future.result()
-            except Exception as e:
-                print(f"Error processing title {title}: {e}")
-                result = False  # Se puede ajustar para manejar errores de otra manera.
-            results_by_title[title]["shown"] += 1
-            if result:
-                results_by_title[title]["selected"] += 1
-
-    # Mostrar los resultados de cada título.
-    for title, counts in results_by_title.items():
-        percentage = (
-            (counts["selected"] / counts["shown"] * 100) if counts["shown"] > 0 else 0
-        )
-
-        results.append(
-            {
-                "title": title,
-                "time_selected": counts["selected"],
-                "times_shown": counts["shown"],
-                "percentage": percentage,
-            }
-        )
-
-        print(
-            f"{'=' * 10}\n"
-            f"Title: {title}\n"
-            f"Selected: {counts['selected']} times\n"
-            f"Times shown: {counts['shown']}\n"
-            f"Percentage: {percentage:.2f}%\n"
-        )
-    return results
-
-
 if __name__ == "__main__":
-    # Videos from a YouTube channel, just copy and paste the list of videos in a videos.txt file
     with open("video_transcription.txt", "r", encoding="utf-8") as file:
         video_transcription = file.read()
-    titles = gen_video_titles(video_transcription, "10")
+    titles = gen_video_titles(video_transcription, 25)
+    titles = try_to_load_json(_client, MODEL, titles)
     print("\n=== 10 INITIAL VIDEO TITLES ===")
     print(titles)
-    titles_json = try_to_load_json(_client, MODEL, titles)
 
-    with open("videos_to_compare.json", "r", encoding="utf-8") as file:
-        comparations = try_to_load_json(_client, MODEL, file.read())
-    titles_results = validate_titles(titles_json, comparations, 5)
+    persona_tester = PersonaTester(
+        model=MODEL,
+        client=_client,
+        comparation_path="videos_to_compare.json",
+    )
+
+    titles_results = persona_tester.test_multiples_videos(
+        titles,
+        checks=50,
+        use_extra_titles=True,
+    )
 
     with open("ignore_final_video_titles.json", "w", encoding="utf-8") as file:
         file.write(json.dumps(titles_results))
