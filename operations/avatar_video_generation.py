@@ -1,6 +1,11 @@
+"""
+Generating an avatar video based on audio input.
+"""
+
 import logging
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 import moviepy.editor as mpe
@@ -8,7 +13,6 @@ import numpy as np
 from openai import OpenAI
 
 from utils import apply_shake, get_subclip_volume_segment
-
 
 SYSTEM_PROMPT = (
     "You are an emotion classifier. "
@@ -18,13 +22,10 @@ SYSTEM_PROMPT = (
 )
 
 load_dotenv()
-MODEL = os.getenv("MODEL", "gpt-4.1-2025-04-14")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "GPT-4.1")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-_client = OpenAI(
-    api_key=OPENAI_API_KEY,
-    base_url=OPENAI_API_BASE,
-)
+_client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
 
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "turbo")
 
@@ -36,42 +37,112 @@ def _classify_emotion(text: str, config: dict) -> str:
     """
     Use ChatGPT to classify the emotion of a given text.
     """
-    emotion = config.get("avatars", {})
-
+    emotion_map: dict = config.get("avatars", {})
     try:
-        prompt = SYSTEM_PROMPT.replace("{emotions}", ", ".join(emotion.keys()))
-
+        prompt = SYSTEM_PROMPT.replace("{emotions}", ", ".join(emotion_map.keys()))
         response = _client.chat.completions.create(
-            model=MODEL,
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": text},
             ],
         )
-
         label = response.choices[0].message.content.strip().lower()
-        # Ensure label is one of the dynamic keys
-        if label not in emotion:
-            logger.warning(
-                "Received unexpected label '%s', defaulting to neutral", label
-            )
-            return list(emotion.keys())[0]
-        return label
+        for key in emotion_map.keys():
+            if key.lower() in label:
+                return key
+        logger.warning("Received unexpected label '%s', defaulting to neutral", label)
+        return list(emotion_map.keys())[0]
     except Exception as e:
         logger.error("ChatGPT API error: %s", e)
-        return "neutral"
+        return list(emotion_map.keys())[0]
 
 
-def render_segment(avatar_segment, segment_index):
+def _process_transcript_segment(seg, pydub_audio, config):
     """
-    Render a segment of the avatar video.
+    Classify emotion and calculate the volume for the audio segment.
     """
-    output_path = f"temp_segment_{segment_index:03d}.mp4"
-    logger.info("Export segment %d to %s...", segment_index, output_path)
-    avatar_segment.write_videofile(
-        output_path, codec="libx264", audio=False, verbose=False, logger=None
+    start, end, text = seg.start, seg.end, seg.text.strip()
+    label = _classify_emotion(text, config)
+    duration = end - start
+    volume = get_subclip_volume_segment(pydub_audio, start, duration)
+    logger.info(
+        "Segment %f-%fs, Text: '%s', Emotion: %s, Volume: %f",
+        start,
+        end,
+        text,
+        label,
+        volume,
     )
-    return output_path
+    return {"start": start, "end": end, "emotion": label, "volume": volume}
+
+
+def generate_segment(audio_path, audio_clip, config: dict, max_workers=None):
+    """
+    Generate segments based on audio input.
+    Each segment is classified with a dynamic set of emotions via ChatGPT.
+    """
+    try:
+        from faster_whisper import WhisperModel
+        from pydub import AudioSegment
+    except ImportError as e:
+        logger.error("Error importing required libraries: %s", e)
+        return [], 0
+
+    emotion_map: dict = config.get("avatars", {})
+
+    logger.info("Load audio (pydub)...")
+    pydub_audio = AudioSegment.from_file(audio_path)
+    logger.info("Transcribing audio...")
+    whisper_model = WhisperModel(WHISPER_MODEL_SIZE)
+    result, _ = whisper_model.transcribe(audio_path, multilingual=True)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(_process_transcript_segment, seg, pydub_audio, config)
+            for seg in result
+        ]
+        segments = [f.result() for f in as_completed(futures)]
+
+    volumes = [s["volume"] for s in segments]
+    global_avg_volume = np.mean(volumes) if volumes else 0
+    logger.info("General average volume: %f", global_avg_volume)
+
+    total_duration = sum(s["end"] - s["start"] for s in segments)
+    if total_duration < audio_clip.duration:
+        segments.append(
+            {
+                "start": total_duration,
+                "end": audio_clip.duration,
+                "emotion": list(emotion_map.keys())[0],
+                "volume": global_avg_volume,
+            }
+        )
+
+    del whisper_model
+    return segments, global_avg_volume
+
+
+def _render_avatar_segment(i, seg, avatar_path, shake_factor, global_avg_volume):
+    """
+    Load the avatar, apply the loop + shake and write the output file.
+    """
+    start, end = seg["start"], seg["end"]
+    volume = seg["volume"]
+    intensity = (
+        (volume / global_avg_volume) * shake_factor if global_avg_volume > 0 else 0
+    )
+
+    avatar_video = mpe.VideoFileClip(avatar_path).without_audio()
+    avatar_segment = avatar_video.loop(duration=end - start)
+    avatar_segment = apply_shake(avatar_segment, intensity)
+
+    out_name = f"temp_{i:03d}_{os.path.splitext(os.path.basename(avatar_path))[0]}.mp4"
+    logger.info("Rendering segment %d (%s) → %s", i, seg["emotion"], out_name)
+    avatar_segment.write_videofile(
+        out_name, codec="libx264", audio=False, verbose=False, logger=None
+    )
+    return out_name
 
 
 def concatenate_segments_ffmpeg(segment_paths, final_output, audio_path):
@@ -129,77 +200,9 @@ def concatenate_segments_ffmpeg(segment_paths, final_output, audio_path):
     logger.info("Final video exported to %s", final_output)
 
 
-def generate_segment(audio_path, audio_clip, config: dict):
+def generate_avatar_video(audio_path: str, config: dict, max_workers=None):
     """
-    Generate segments based on audio input.
-    Each segment is classified with a dynamic set of emotions via ChatGPT.
-    """
-    try:
-        from faster_whisper import WhisperModel  # type: ignore
-        from pydub import AudioSegment  # type: ignore
-    except ImportError as e:
-        logger.error("Error importing required libraries: %s", e)
-        return [], 0
-
-    emotion: dict = config.get("avatars", {})
-
-    logger.info("Load audio (pydub)...")
-    pydub_audio = AudioSegment.from_file(audio_path)
-    logger.info("Transcribing audio...")
-    whisper_model = WhisperModel(WHISPER_MODEL_SIZE)
-    result, _ = whisper_model.transcribe(audio_path, multilingual=True)
-
-    segments = []
-    volumes = []
-    for seg in result:
-        start, end = seg.start, seg.end
-        text = seg.text.strip()
-        duration = end - start
-
-        # Classify emotion using ChatGPT
-        label = _classify_emotion(text, config)
-        emotion = emotion.get(label, list(emotion.keys())[0])
-
-        volume = get_subclip_volume_segment(pydub_audio, start, duration)
-        segments.append(
-            {
-                "start": start,
-                "end": end,
-                "emotion": emotion,
-                "volume": volume,
-            }
-        )
-        volumes.append(volume)
-        logger.info(
-            "Segment %f-%fs, Text: '%s', Emotion: %s, Volume: %f",
-            start,
-            end,
-            text,
-            emotion,
-            volume,
-        )
-
-    global_avg_volume = np.mean(volumes) if volumes else 0
-    logger.info("General average volume: %f", global_avg_volume)
-
-    total_duration = sum(s["end"] - s["start"] for s in segments)
-    if total_duration < audio_clip.duration:
-        segments.append(
-            {
-                "start": total_duration,
-                "end": audio_clip.duration,
-                "emotion": "avatar_calm",
-                "volume": global_avg_volume,
-            }
-        )
-
-    del whisper_model
-    return segments, global_avg_volume
-
-
-def generate_avatar_video(audio_path: str, config: dict):
-    """
-    Process audio to generate a video with avatars based on dynamically classified emotions.
+    Process audio to generate a video with avatars based on emotions.
     """
     avatars = config.get("avatars", {})
     shake_factor = config.get("shake_factor", 0.1)
@@ -211,37 +214,38 @@ def generate_avatar_video(audio_path: str, config: dict):
         audio_clip = mpe.AudioFileClip(audio_path)
         clip = None
 
-    segments, global_avg_volume = generate_segment(audio_path, audio_clip, config)
+    segments, global_avg_volume = generate_segment(
+        audio_path, audio_clip, config, max_workers
+    )
 
-    avatar_clips = []
+    tasks = []
     for i, seg in enumerate(segments):
-        emotion, volume = seg["emotion"], seg["volume"]
-        intensity = (
-            (volume / global_avg_volume) * shake_factor if global_avg_volume > 0 else 0
-        )
-
-        avatar_path = avatars.get(emotion)
+        avatar_path = avatars.get(seg["emotion"])
         if not avatar_path:
-            logger.warning("No avatar for emotion '%s'. Skipping.", emotion)
+            logger.warning("No avatar for emotion '%s'. Skipping.", seg["emotion"])
             continue
+        tasks.append((i, seg, avatar_path))
 
-        avatar_video = mpe.VideoFileClip(avatar_path).without_audio()
-        avatar_segment = avatar_video.loop(duration=seg["end"] - seg["start"])
-        avatar_segment = apply_shake(avatar_segment, intensity)
+    segment_paths = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                _render_avatar_segment,
+                i,
+                seg,
+                avatar_path,
+                shake_factor,
+                global_avg_volume,
+            ): (i, avatar_path)
+            for i, seg, avatar_path in tasks
+        }
+        for future in as_completed(futures):
+            segment_paths.append(future.result())
 
-        out_name = f"temp_{i:03d}_{emotion}.mp4"
-        avatar_segment.write_videofile(
-            out_name, codec="libx264", audio=False, verbose=False, logger=None
-        )
-        avatar_clips.append(out_name)
-
-    if not avatar_clips:
+    if not segment_paths:
         logger.error("No clips generated. Exiting.")
         return
 
     final_output = "output_video.mp4"
-    concatenate_segments_ffmpeg(avatar_clips, final_output, audio_path)
-
-    # Cleanup individual segments
-    for path in avatar_clips:
-        os.remove(path)
+    concatenate_segments_ffmpeg(segment_paths, final_output, audio_path)
+    logger.info("Final video saved on: %s", final_output)
