@@ -25,6 +25,8 @@ class PersonaTester:
         with open(comparation_path, "r", encoding="utf-8") as file:
             comparations = try_to_load_json(self._client, self._model, file.read())
         self.comparation = comparations
+        self.ideas_to_generate = self.comparation["ideas_to_generate"]
+        self.iterations = self.comparation["iterations"]
 
     def test_video(self, titles_to_compare, title_to_test, persona):
         """

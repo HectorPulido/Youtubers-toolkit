@@ -52,7 +52,7 @@ def float_to_srt_time(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{sec:02d},{milliseconds:03d}"
 
 
-def get_audio(input_video_file_clip, filename: str) -> str:
+def get_audio(input_video_file_clip, filename: str) -> str | None:
     """
     Extract audio from a video file and save it as a WAV file.
     """
@@ -61,7 +61,10 @@ def get_audio(input_video_file_clip, filename: str) -> str:
     audio_path = Path(audio_file_name)
     if audio_path.exists():
         audio_path.unlink()
-    input_video_file_clip.audio.write_audiofile(str(audio_path), codec="pcm_s16le")
+    try:
+        input_video_file_clip.audio.write_audiofile(str(audio_path), codec="pcm_s16le")
+    except AttributeError:
+        return None
     return str(audio_path)
 
 

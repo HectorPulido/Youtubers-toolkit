@@ -6,4 +6,6 @@ from .transcript import *
 from .trim import *
 from .translation import video_translation, audio_generator
 from .shorts import generate_video_base, add_titles
-from .avatar_video_generation import generate_avatar_video
+from .avatar_video_generation import (
+    create_avatar_video_from_audio as generate_avatar_video,
+)

@@ -25,6 +25,8 @@ def denoise_video(**kwargs):
         kwargs["filename"],
     )
     audio_file_name = get_audio(input_video_file_clip, filename)
+    if not audio_file_name:
+        return kwargs
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = pretrained.dns64().to(device)
     wav, source = torchaudio.load(audio_file_name)

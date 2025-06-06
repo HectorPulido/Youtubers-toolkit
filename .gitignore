@@ -1,10 +1,14 @@
 *.wav
 *.mp4
+*.mov
 *.srt
 *.mp3
 *.jpe?g
 *.png
 .DS_Store
+*_segments.json
+output.json
+output.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

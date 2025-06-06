@@ -1,6 +1,8 @@
 {
+    "iterations": 3,
+    "ideas_to_generate": 10,
     "extra_titles": [
-        "🚀 HICE la MEJOR IA para VIDEOJUEGOS [+ 3 DEMOS] 🎮"
+        "La forma mas facil de crear un servidor de SERIES en casa con DOCKER | Odisea Homelab #3"
     ],
     "user_personas": [
         "Una persona que busca aprender de tecnologia",

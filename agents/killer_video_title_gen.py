@@ -3,6 +3,7 @@ This script generates killer video titles for YouTube videos using OpenAI's API.
 """
 
 import os
+import sys
 import json
 
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ except ImportError:
     from persona_testing import PersonaTester
 
 load_dotenv()
-MODEL = os.getenv("MODEL", "o3-mini")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "o3-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
 _client = OpenAI(
@@ -180,38 +181,47 @@ def gen_video_titles(videos_string: str, num_of_titles: int) -> str:
     </video_data>
 
     Return the data on an json list, do this only, do not return anything more
-    {{
+    [
         "My killer video title 1",
         "My killer video title 2",
         ...
-    }}
+    ]
     """
     response = _client.chat.completions.create(
-        model=MODEL,
+        model=OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content.strip()
 
 
 if __name__ == "__main__":
-    with open("video_transcription.txt", "r", encoding="utf-8") as file:
+    if len(sys.argv) < 2 or len(sys.argv) > 2:
+        print("Usage: python killer_video_title_gen.py <video_path>")
+        sys.exit(1)
+
+    video_path = sys.argv[1]
+
+    with open(video_path, "r", encoding="utf-8") as file:
         video_transcription = file.read()
-    titles = gen_video_titles(video_transcription, 25)
-    titles = try_to_load_json(_client, MODEL, titles)
-    print("\n=== 10 INITIAL VIDEO TITLES ===")
-    print(titles)
 
     persona_tester = PersonaTester(
-        model=MODEL,
+        model=OPENAI_MODEL,
         client=_client,
         comparation_path="videos_to_compare.json",
     )
+    titles = gen_video_titles(video_transcription, persona_tester.ideas_to_generate)
+    titles = try_to_load_json(_client, OPENAI_MODEL, titles)
+    print("\n=== INITIAL VIDEO TITLES ===")
+    print(titles)
 
     titles_results = persona_tester.test_multiples_videos(
         titles,
-        checks=50,
+        checks=25,
         use_extra_titles=True,
     )
 
-    with open("ignore_final_video_titles.json", "w", encoding="utf-8") as file:
+    print(f"\n=== {persona_tester.ideas_to_generate} FINAL VIDEO TITLES ===")
+    print(titles_results)
+
+    with open("output.json", "w", encoding="utf-8") as file:
         file.write(json.dumps(titles_results))

@@ -113,6 +113,9 @@ def video_translation(
     video_stem = Path(video_path).stem
     input_video_file_clip = VideoFileClip(video_path)
     audio_path = get_audio(input_video_file_clip, video_stem)
+    if not audio_path:
+        return
+
     whisper_model = WhisperModel(MODEL_SIZE, num_workers=4, compute_type="int8")
     transcribe_params = {
         "audio": audio_path,

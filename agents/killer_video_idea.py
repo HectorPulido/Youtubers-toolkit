@@ -2,6 +2,7 @@
 This script generates unique and engaging YouTube video ideas for a specific channel
 """
 
+import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,7 +19,7 @@ except ImportError:
 
 load_dotenv()
 
-MODEL = os.getenv("MODEL", "o3-mini")
+MODEL = os.getenv("OPENAI_MODEL", "o3-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
 
@@ -259,13 +260,13 @@ if __name__ == "__main__":
 
     _final_ideas = iterative_idea_generator(
         videos_string=channel_data,
-        iterations=3,
-        num_initial_ideas=25,
+        iterations=persona_tester.iterations,
+        num_initial_ideas=persona_tester.ideas_to_generate,
         persona=persona_tester,
     )
 
     print("\n=== 10 FINAL VIDEO IDEAS (TOPIC -> ANGLE -> HOOK) ===")
     print(_final_ideas)
 
-    with open("ignore_video_ideas.txt", "w", encoding="utf-8") as file:
-        file.write(_final_ideas)
+    with open("output.txt", "w", encoding="utf-8") as file:
+        file.write(json.dumps(_final_ideas))
