@@ -269,4 +269,4 @@ if __name__ == "__main__":
     print(_final_ideas)
 
     with open("output.txt", "w", encoding="utf-8") as file:
-        file.write(json.dumps(_final_ideas))
+        file.write(json.dumps(_final_ideas, ensure_ascii=False, indent=4))

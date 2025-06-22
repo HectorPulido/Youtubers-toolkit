@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     titles_results = persona_tester.test_multiples_videos(
         titles,
-        checks=25,
+        checks=100,
         use_extra_titles=True,
     )
 
@@ -224,4 +224,4 @@ if __name__ == "__main__":
     print(titles_results)
 
     with open("output.json", "w", encoding="utf-8") as file:
-        file.write(json.dumps(titles_results))
+        file.write(json.dumps(titles_results, ensure_ascii=False, indent=4))
