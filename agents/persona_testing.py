@@ -2,7 +2,9 @@
 This module contains the TestingWithPersona class, which is used to test video titles
 """
 
+import time
 import random
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 try:
@@ -28,6 +30,50 @@ class PersonaTester:
         self.ideas_to_generate = self.comparation["ideas_to_generate"]
         self.iterations = self.comparation["iterations"]
 
+        self._backoff_lock = threading.Lock()
+        self._backoff_until = 0.0
+        self._base_backoff = 1.0
+        self._max_backoff = 30.0
+        self._max_retries = 6
+
+    def _sleep_if_backing_off(self):
+        now = time.monotonic()
+        with self._backoff_lock:
+            wait_for = self._backoff_until - now
+        if wait_for > 0:
+            time.sleep(wait_for)
+
+    def _is_rate_limit_error(self, exc):
+        status = getattr(exc, "status", None) or getattr(exc, "status_code", None)
+        if status == 429:
+            return True
+        name: str = exc.__class__.__name__.lower()
+        if "ratelimit" in name or "rate_limit" in name:
+            return True
+        msg = str(exc).lower()
+        if "429" in msg or "rate limit" in msg or "ratelimited" in msg:
+            return True
+        return False
+
+    def _start_shared_backoff(self, seconds):
+        with self._backoff_lock:
+            self._backoff_until = max(self._backoff_until, time.monotonic() + seconds)
+
+    def _request_with_retries(self, fn):
+        attempt = 0
+        while True:
+            self._sleep_if_backing_off()
+            try:
+                return fn()
+            except Exception as e:
+                if not self._is_rate_limit_error(e) or attempt >= self._max_retries:
+                    raise
+                backoff = min(self._base_backoff * (2**attempt), self._max_backoff)
+                backoff += random.uniform(0, 0.5)
+                self._start_shared_backoff(backoff)
+                time.sleep(backoff)
+                attempt += 1
+
     def test_video(self, titles_to_compare, title_to_test, persona):
         """
         Test the title against a list of titles to compare.
@@ -41,17 +87,22 @@ class PersonaTester:
         )
         prompt = f"""
             You are {persona}
-            You are on your youtube feed and some videos are showing
+            You are on your youtube feed and some videos are showing, you speak those languages without issue
             <videos>
             {videos_str}
             </videos>
             Which video do you click? Respond only one number inside "", nothing else
             eg. "<my_selected_title_number_video>"
         """
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-        )
+
+        def _call():
+            return self._client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+        response = self._request_with_retries(_call)
+
         selected = response.choices[0].message.content.strip()
         return f'"{title_to_test_index}"' in selected
 
@@ -72,7 +123,6 @@ class PersonaTester:
         results = []
 
         with ThreadPoolExecutor() as executor:
-            # Enviar todas las tareas concurrentemente.
             for title in titles:
                 for persona in personas_to_test:
                     future = executor.submit(
@@ -80,7 +130,6 @@ class PersonaTester:
                     )
                     tasks.append((title, future))
 
-            # Recopilar y agrupar los resultados por título.
             for title, future in tasks:
                 try:
                     result = future.result()

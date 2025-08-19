@@ -74,9 +74,9 @@ def get_youtube_data(youtube_username):
                 "videoId"
             ]
             video_data["url"] = f"https://www.youtube.com/watch?v={video_data['id']}"
-            video_data["thumbnail"] = (
-                f"https://img.youtube.com/vi/{video_data['id']}/0.jpg"
-            )
+            video_data[
+                "thumbnail"
+            ] = f"https://img.youtube.com/vi/{video_data['id']}/0.jpg"
             video_data["published"] = video["richItemRenderer"]["content"][
                 "videoRenderer"
             ]["publishedTimeText"]["simpleText"]
