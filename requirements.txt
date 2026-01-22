@@ -10,5 +10,5 @@ pydub==0.25.1
 kokoro==0.7.13
 soundfile==0.13.1
 transformers==4.50.0
-sentencepiece==0.1.99
+sentencepiece==0.2.1
 openai==1.68.2
