@@ -18,15 +18,19 @@ def transcribe_video(video: str):
     subprocess.run(command, shell=True, check=True)
 
 
-def separate_video(video: str):
+def separate_video(video: str, discard: bool = True):
     """
     Separates the video using the 'trim_by_silence' pipeline.
     Command:
     python main.py video_edit {video} --pipeline \
-        trim_by_silence save_separated_video -c 0.25 -s 0.01 -d True
+        trim_by_silence save_separated_video -c 0.25 -vf -d True
+    Threshold is auto-detected via Otsu's method.
+    Voice bandpass filter (85-3400 Hz) is applied before silence detection.
     """
+    discard_str = "True" if discard else "False"
+
     command = f"python main.py video_edit {video} --pipeline \
-        trim_by_silence save_separated_video -c 0.25 -s 0.001 -d True"
+        trim_by_silence save_separated_video -c 0.25 -vf -d {discard_str}"
     subprocess.run(command, shell=True, check=True)
 
 
@@ -134,9 +138,9 @@ def main():
         print("Usage: python recipes.py <command> <video>")
         print(
             "Available commands: "
-            "separate_video, generate_avatar, generate_short_base, "
-            "transcribe_video, subtitle_video, generate_video_ideas,"
-            "generate_video_title"
+            "separate_video, separate_video_keep_silence, generate_avatar, "
+            "generate_short_base, transcribe_video, subtitle_video, "
+            "generate_video_title, generate_video_ideas"
         )
         sys.exit(1)
 
@@ -145,6 +149,8 @@ def main():
 
     if command == "separate_video":
         separate_video(video)
+    elif command == "separate_video_keep_silence":
+        separate_video(video, False)
     elif command == "generate_avatar":
         generate_avatar(video)
     elif command == "generate_short_base":

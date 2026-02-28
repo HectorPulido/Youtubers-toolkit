@@ -54,6 +54,7 @@ def video_edit_command(args):
             "clip_interval": args.clip_interval,
             "sound_threshold": args.sound_threshold,
             "discard_silence": args.discard_silence,
+            "voice_filter": args.voice_filter,
             "config_data": config_data,
         }
         kwargs = get_video_data(**kwargs)
@@ -145,8 +146,17 @@ def main():
         "-s",
         "--sound_threshold",
         type=float,
-        default=0.01,
-        help="Maximum volume threshold to consider silence",
+        default=None,
+        help="Volume threshold to consider silence (auto-detected via Otsu if not set)",
+    )
+    parser_edit.add_argument(
+        "-vf",
+        "--voice_filter",
+        const=True,
+        default=False,
+        type=str2bool,
+        nargs="?",
+        help="Apply a bandpass filter (85-3400 Hz) to isolate voice before silence detection",
     )
     parser_edit.add_argument(
         "-d",

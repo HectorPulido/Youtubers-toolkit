@@ -31,6 +31,25 @@ def get_subclip_volume(subclip, second, interval):
     return np.sqrt(((1.0 * cut) ** 2).mean())
 
 
+def otsu_threshold(values: np.ndarray) -> float:
+    """
+    Compute optimal binarization threshold using Otsu's method.
+    Finds the value that maximizes between-class variance (silence vs. sound).
+    """
+    hist, bin_edges = np.histogram(values, bins=256)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
+    total = hist.sum()
+    cumsum = np.cumsum(hist)
+    cumsum_weighted = np.cumsum(hist * bin_centers)
+    w0 = cumsum / total
+    w1 = 1.0 - w0
+    mu0 = cumsum_weighted / (cumsum + 1e-10)
+    mu_total = (hist * bin_centers).sum() / total
+    mu1 = (mu_total - w0 * mu0) / (w1 + 1e-10)
+    sigma_between = w0 * w1 * (mu0 - mu1) ** 2
+    return float(bin_centers[np.argmax(sigma_between)])
+
+
 def get_subclip_volume_segment(audio_segment, start: float, duration: float) -> float:
     """
     Get the volume of a segment of an audio file.
